@@ -44,7 +44,7 @@ fn draw_pieces(d: &mut RaylibDrawHandle, board: &Board) {
 
             if let Some(p) = *piece {
                 let opt = Some(p);
-                let symbol = get_lexrep(&opt);
+                let symbol = &get_lexrep(&opt);
 
                 let font_size = 30;
 

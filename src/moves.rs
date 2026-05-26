@@ -11,6 +11,7 @@ pub enum Colour {
 #[derive(Debug, Clone, Copy)]
 pub enum PieceKind {
     Pawn,
+    Knight,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -20,17 +21,30 @@ pub struct Piece {
     pub has_moved: bool,
 }
 
-pub fn get_lexrep(piece: &Option<Piece>) -> &str {
+impl PieceKind {
+    fn base_char(&self) -> char {
+        match self {
+            PieceKind::Pawn   => 'P',
+            PieceKind::Knight => 'k',
+        }
+    }
+}
+
+pub fn get_lexrep(piece: &Option<Piece>) -> String {
     match piece {
-        Some(p) => match (p.kind, p.colour) {
-            (PieceKind::Pawn, Colour::White) => "P",
-            (PieceKind::Pawn, Colour::Black) => "p",
-        },
-        None => " ",
+        Some(p) => {
+            let c = p.kind.base_char();
+            match p.colour {
+                Colour::White => c.to_string(),
+                Colour::Black => c.to_lowercase().to_string(),
+            }
+        }
+        None => " ".to_string(),
     }
 }
 
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 pub struct Move {
     pub from: Coordinate,
     pub to: Coordinate,
@@ -51,8 +65,10 @@ impl Board {
     }
 
     fn dispatch(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
+        use PieceKind::*;
         match p.kind {
-            PieceKind::Pawn => self.pawn_moves(p, row, col),
+            Pawn => self.pawn_moves(p, row, col),
+            Knight => self.knight_moves(p, row, col),
         }
     }
 
@@ -83,5 +99,23 @@ impl Board {
         }
 
         moves
+    }
+
+    fn knight_moves(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
+        const KNIGHT_DELTAS: [(i8, i8); 8] = [
+            (-2, -1), (-2, 1),
+            (-1, -2), (-1, 2),
+            ( 1, -2), ( 1, 2),
+            ( 2, -1), ( 2, 1),
+        ];
+        let origin = (row, col);
+        let moves: Vec<Move> = KNIGHT_DELTAS.iter().filter_map(|(dr, dc)| {
+            let (nr, nc) = (row + dr, col + dc);
+            if !(0..8).contains(&nr) || !(0..8).contains(&nc) { return None; }
+            let target = self.get_piece(nr, nc);
+            if target.is_some_and(|t | t.colour == p.colour) { return None; }
+            Some(Move::new(origin, (nr, nc)))
+        }).collect();
+        return moves;
     }
 }
