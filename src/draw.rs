@@ -1,38 +1,38 @@
+use crate::{Board, moves::get_lexrep};
 use raylib::prelude::*;
-use crate::{Board, get_lexrep};
 
 const TILE_SIZE: i32 = 80;
 
-pub fn main() {
+pub fn draw(board: &Board) {
     let (mut r1, thread) = raylib::init()
         .size(TILE_SIZE * 8, TILE_SIZE * 8)
         .title("chess3")
         .build();
-
-    let board = Board::new();
 
     while !r1.window_should_close() {
         let mut d = r1.begin_drawing(&thread);
 
         d.clear_background(Color::DARKGRAY);
 
-       draw_board(&mut d); 
-       draw_pieces(&mut d, &board);
+        draw_board(&mut d);
+        draw_pieces(&mut d, board);
     }
 }
 
 fn draw_board(d: &mut RaylibDrawHandle) {
-    let light = Color::new(240, 217, 181, 255); 
-    let dark  = Color::new(181, 136, 99, 255); 
+    let light = Color::new(240, 217, 181, 255);
+    let dark = Color::new(181, 136, 99, 255);
     for row in 0..8 {
         for col in 0..8 {
-            let colour = if (row + col) % 2 == 0 {
-                light
-            } else {
-                dark
-            };
+            let colour = if (row + col) % 2 == 0 { light } else { dark };
 
-            d.draw_rectangle(col as i32 * TILE_SIZE, row as i32 * TILE_SIZE, TILE_SIZE, TILE_SIZE, colour);
+            d.draw_rectangle(
+                col as i32 * TILE_SIZE,
+                row as i32 * TILE_SIZE,
+                TILE_SIZE,
+                TILE_SIZE,
+                colour,
+            );
         }
     }
 }
