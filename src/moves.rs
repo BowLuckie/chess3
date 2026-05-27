@@ -12,6 +12,10 @@ pub enum Colour {
 pub enum PieceKind {
     Pawn,
     Knight,
+    Queen,
+    Rook,
+    Bishop,
+    King
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -23,9 +27,14 @@ pub struct Piece {
 
 impl PieceKind {
     fn base_char(&self) -> char {
+    use PieceKind::*;
         match self {
-            PieceKind::Pawn   => 'P',
-            PieceKind::Knight => 'k',
+            Pawn   => 'P',
+            Knight => 'N',
+            Queen => 'Q',
+            Rook => 'R',
+            Bishop => 'B',
+            King => 'K',
         }
     }
 }
@@ -51,7 +60,7 @@ pub struct Move {
 }
 
 impl Move {
-    pub fn new(from: Coordinate, to: Coordinate) -> Self {
+    pub fn from(from: Coordinate, to: Coordinate) -> Self {
         Move { from, to }
     }
 }
@@ -69,34 +78,46 @@ impl Board {
         match p.kind {
             Pawn => self.pawn_moves(p, row, col),
             Knight => self.knight_moves(p, row, col),
+            Queen => self.queen_moves(p, row, col),
+            Rook => self.rook_moves(p, row, col),
+            Bishop => self.bishop_moves(p, row, col),
+            King => self.king_moves(p, row, col),
         }
     }
 
+    fn in_bounds(&self, r: i8, c: i8) -> bool {
+        (0..8).contains(&r) && (0..8).contains(&c)
+    }
+
     fn pawn_moves(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
-        let dir: i8 = match p.colour {
+        let dir = match p.colour {
             Colour::Black => 1,
             Colour::White => -1,
         };
+
         let mut moves = Vec::new();
         let origin = (row, col);
         let new_row = row + dir;
 
-        if (0..8).contains(&new_row) && self.get_piece(new_row, col).is_none() {
-            moves.push(Move::new(origin, (new_row, col)));
-            if !p.has_moved && self.get_piece(new_row + dir, col).is_none() {
-                moves.push(Move::new(origin, (new_row + dir, col)));
+        if self.in_bounds(new_row, col) && self.get_piece(new_row, col).is_none() {
+            moves.push(Move::from(origin, (new_row, col)));
+
+            let two_row = new_row + dir;
+            if !p.has_moved && self.in_bounds(two_row, col) && self.get_piece(two_row, col).is_none() {
+                moves.push(Move::from(origin, (two_row, col)));
             }
         }
 
-        for dc in [-1i8, 1] {
+        for dc in [-1, 1] {
             let new_col = col + dc;
-            if (0..8).contains(&new_col) && (0..8).contains(&new_row) {
-                let target = self.get_piece(new_row, new_col);
-                if target.is_some_and(|t| t.colour != p.colour) {
-                    moves.push(Move::new(origin, (new_row, new_col)));
+            if self.in_bounds(new_row, new_col) {
+                if let Some(target) = self.get_piece(new_row, new_col) {
+                    if target.colour != p.colour {
+                        moves.push(Move::from(origin, (new_row, new_col)));
+                    }
                 }
             }
-        }
+        };
 
         moves
     }
@@ -114,8 +135,85 @@ impl Board {
             if !(0..8).contains(&nr) || !(0..8).contains(&nc) { return None; }
             let target = self.get_piece(nr, nc);
             if target.is_some_and(|t | t.colour == p.colour) { return None; }
-            Some(Move::new(origin, (nr, nc)))
+            Some(Move::from(origin, (nr, nc)))
         }).collect();
         return moves;
+    }
+
+    fn raw_slide(&self, p: Piece, row: i8, col: i8, directions: Vec<Coordinate>, max: Option<i8>) -> Vec<Move> {
+        let mut moves = Vec::new();
+        let origin = (row, col);
+
+        for (drow, dcol) in directions {
+            let (mut trow, mut tcol) = (row + drow, col + dcol);
+            let mut distance: i8 = 0;
+
+            while self.in_bounds(trow, tcol) && distance < max.unwrap_or(8) {
+                let target = self.get_piece(trow, tcol);
+
+                if target.is_none() {
+                    moves.push(Move::from(origin, (trow, tcol)));
+                } else if target.unwrap().colour != p.colour {
+                    moves.push(Move::from(origin, (trow, tcol)));
+                    break;
+                } else {
+                    break;
+                }
+
+                trow += drow;
+                tcol += dcol;
+                distance += 1;
+            }
+        }
+
+        return moves;
+    }
+
+    fn queen_moves(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
+        let directions = vec![
+            (1, 0), 
+            (1, 1), 
+            (0, 1),     
+            (-1, 1),
+            (-1, 0),     
+            (-1, -1),
+            (0, -1),    
+            (1, -1),
+        ];
+        return self.raw_slide(p, row, col, directions, None);
+    }
+
+    fn rook_moves(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
+       let directions = vec![
+            (1, 0), 
+            (0, 1),     
+            (-1, 0),     
+            (0, -1),    
+        ];
+        return self.raw_slide(p, row, col, directions, None);
+    }
+
+    fn bishop_moves(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
+       let directions = vec![
+            (1, 1), 
+            (-1, 1),
+            (-1, -1),
+            (1, -1),
+        ];
+        return self.raw_slide(p, row, col, directions, None);
+    }
+    
+    fn king_moves(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
+        let directions = vec![
+            (1, 0), 
+            (1, 1), 
+            (0, 1),     
+            (-1, 1),
+            (-1, 0),     
+            (-1, -1),
+            (0, -1),    
+            (1, -1),
+        ];
+        return self.raw_slide(p, row, col, directions, Some(1));
     }
 }

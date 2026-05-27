@@ -10,23 +10,55 @@ pub struct Board {
 
 impl Board {
     pub fn new() -> Self {
+        use Colour::*;
+        use PieceKind::*;
+
         let mut squares: [[Option<Piece>; 8]; 8] = [[None; 8]; 8];
 
-        let place = |squares: &mut [[Option<Piece>; 8]; 8], row: usize, col: usize, kind, colour| {
-            squares[row][col] = Some(Piece { kind, colour, has_moved: false });
+        let place = |
+            squares: &mut [[Option<Piece>; 8]; 8],
+            row: usize,
+            col: usize,
+            kind,
+            colour,
+        | {
+            squares[row][col] = Some(Piece {
+                kind,
+                colour,
+                has_moved: false,
+            });
         };
 
         for col in 0..8 {
-            place(&mut squares, 1, col, PieceKind::Pawn,   Colour::Black);
-            place(&mut squares, 6, col, PieceKind::Pawn,   Colour::White);
+            place(&mut squares, 1, col, Pawn, Black);
+            place(&mut squares, 6, col, Pawn, White);
+        }
+
+        for col in [0, 7] {
+            place(&mut squares, 0, col, Rook, Black);
+            place(&mut squares, 7, col, Rook, White);
         }
 
         for col in [1, 6] {
-            place(&mut squares, 0, col, PieceKind::Knight, Colour::Black);
-            place(&mut squares, 7, col, PieceKind::Knight, Colour::White);
+            place(&mut squares, 0, col, Knight, Black);
+            place(&mut squares, 7, col, Knight, White);
         }
 
-        Self { squares, to_move: Colour::White }
+        for col in [2, 5] {
+            place(&mut squares, 0, col, Bishop, Black);
+            place(&mut squares, 7, col, Bishop, White);
+        }
+
+        place(&mut squares, 0, 3, Queen, Black);
+        place(&mut squares, 7, 3, Queen, White);
+
+        place(&mut squares, 0, 4, King, Black);
+        place(&mut squares, 7, 4, King, White);
+
+        Self {
+            squares,
+            to_move: White,
+        }
     }
 
     pub fn get_piece(&self, row: i8, col: i8) -> &Option<Piece> {
