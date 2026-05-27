@@ -1,11 +1,38 @@
-use crate::moves::{Colour, Move, Piece, PieceKind, get_lexrep};
-use std::fmt;
+use crate::moves::{Colour, Move, Piece, PieceKind};
+use std::fmt::{self, write};
 
 #[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
 pub struct Board {
     squares: [[Option<Piece>; 8]; 8],
     pub to_move: Colour,
+}
+
+impl PieceKind {
+    fn base_char(&self) -> char {
+    use PieceKind::*;
+        match self {
+            Pawn   => 'P',
+            Knight => 'N',
+            Queen => 'Q',
+            Rook => 'R',
+            Bishop => 'B',
+            King => 'K',
+        }
+    }
+}
+
+pub fn get_lexrep(piece: &Option<Piece>) -> String {
+    match piece {
+        Some(p) => {
+            let c = p.kind.base_char();
+            match p.colour {
+                Colour::White => c.to_string(),
+                Colour::Black => c.to_lowercase().to_string(),
+            }
+        }
+        None => " ".to_string(),
+    }
 }
 
 impl Board {
@@ -19,8 +46,8 @@ impl Board {
             squares: &mut [[Option<Piece>; 8]; 8],
             row: usize,
             col: usize,
-            kind,
-            colour,
+            kind: PieceKind,
+            colour: Colour,
         | {
             squares[row][col] = Some(Piece {
                 kind,
@@ -79,14 +106,15 @@ impl Board {
 }
 
 impl fmt::Display for Board {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut out = String::new();
         for row in 0..8 {
-            write!(f, "{} ", row)?;
+            out.push_str(&format!("{} ", row));
             for col in 0..8 {
-                write!(f, "[{}]", get_lexrep(self.get_piece(row, col)))?;
+                out.push_str(&format!("[{}]", get_lexrep(self.get_piece(row, col))));
             }
-            writeln!(f)?;
+            out.push('\n');
         }
-        Ok(())
+        write!(f, "{}", out)
     }
 }

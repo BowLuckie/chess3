@@ -1,11 +1,11 @@
 use std::sync::{Arc, Mutex, MutexGuard, atomic::{AtomicBool, Ordering}};
 
-use crate::{Board, moves::Piece};
+use crate::{Board, input::InputState, moves::{Move, Piece}};
 use raylib::prelude::*;
 
 const TILE_SIZE: i32 = 80;
 
-pub fn draw(board: Arc<Mutex<Board>>, ready: Arc<AtomicBool>) {
+pub fn draw(board: Arc<Mutex<Board>>, ready: Arc<AtomicBool>, input: Arc<Mutex<InputState>>) {
     let (mut rl, thread) = raylib::init()
         .size(TILE_SIZE * 8, TILE_SIZE * 8)
         .title("chess3")
@@ -22,6 +22,19 @@ pub fn draw(board: Arc<Mutex<Board>>, ready: Arc<AtomicBool>) {
     ready.store(true, Ordering::SeqCst);
 
     while !rl.window_should_close() {
+        if rl.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT) {
+            let col = (rl.get_mouse_x() / TILE_SIZE) as i8;
+            let row = (rl.get_mouse_y() / TILE_SIZE) as i8;
+
+            let mut input_state = input.lock().unwrap();
+            match input_state.selected {
+                None => input_state.selected = Some((row, col)),
+                Some(origin) => { // TODO
+                    input_state.pending_move = Some(Move::from(origin, (row, col)));
+                    input_state.selected = None;
+                }
+            }
+        }
         let mut d: RaylibDrawHandle<'_> = rl.begin_drawing(&thread);
 
         d.clear_background(Color::DARKGRAY);

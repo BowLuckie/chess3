@@ -25,33 +25,6 @@ pub struct Piece {
     pub has_moved: bool,
 }
 
-impl PieceKind {
-    fn base_char(&self) -> char {
-    use PieceKind::*;
-        match self {
-            Pawn   => 'P',
-            Knight => 'N',
-            Queen => 'Q',
-            Rook => 'R',
-            Bishop => 'B',
-            King => 'K',
-        }
-    }
-}
-
-pub fn get_lexrep(piece: &Option<Piece>) -> String {
-    match piece {
-        Some(p) => {
-            let c = p.kind.base_char();
-            match p.colour {
-                Colour::White => c.to_string(),
-                Colour::Black => c.to_lowercase().to_string(),
-            }
-        }
-        None => " ".to_string(),
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
 pub struct Move {

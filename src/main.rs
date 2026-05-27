@@ -1,45 +1,49 @@
 #![allow(clippy::needless_return)]
 
-use std::{sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}}, thread, time::Duration};
+use std::{io::Write, sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}}, thread, time::Duration};
+use board::Board;
+use crate::input::InputState;
 
 mod board;
 mod draw;
 mod moves;
+mod input;
 
-use board::Board;
 
 fn main() {
-    let (prow, pcol) = (6, 4);
-    let board = Arc::new(Mutex::new(Board::new()));
-    let ready = Arc::new(AtomicBool::new(false));
+    let board: Arc<Mutex<Board>> = Arc::new(Mutex::new(Board::new()));
+    let ready: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+    let input: Arc<Mutex<InputState>> = Arc::new(Mutex::new(InputState::new()));
+    let logic_input = Arc::clone(&input);
 
-    let b = board.lock().unwrap();
-    println!("{:?}", b.get_moves(prow, pcol));
-    println!("{:?}", b.get_piece(prow, pcol));
-    println!("{}", b);
-    drop(b);
-    
-    #[allow(unused_variables)] 
     let logic_board = Arc::clone(&board);
     let window_ready = Arc::clone(&ready);
+
+    
     thread::spawn(move || {
         while !window_ready.load(Ordering::SeqCst) {
             thread::sleep(Duration::from_millis(10));
         }
 
-        logic(logic_board);
+        logic(logic_board, logic_input);
     });
 
-    draw::draw(board, ready);
-    
+    draw::draw(board, ready, input);
 }
 
-fn logic(board: Arc<Mutex<Board>>) {
-    // example
-    let (prow, pcol) = (6, 4);
-    let e4 = moves::Move::from((prow, pcol), (prow - 2, pcol));
+/// unlocks the board and computes a closure on it
+fn with_board<T>(board: &Arc<Mutex<Board>>, f: impl FnOnce(&mut Board) -> T) -> T {
+    f(&mut board.lock().unwrap())
+}
 
-    thread::sleep(Duration::from_secs(3));
-    board.lock().unwrap().raw_move(e4);
+fn logic(board: Arc<Mutex<Board>>, input: Arc<Mutex<InputState>>) {
+    loop {
+        let mv = input.lock().unwrap().pending_move.take();
 
+        if let Some(mv) = mv {
+            with_board(&board, |board_| board_.raw_move(mv))
+        }
+
+        thread::sleep(Duration::from_millis(16));
+    }
 }
