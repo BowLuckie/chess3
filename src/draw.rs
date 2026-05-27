@@ -1,21 +1,26 @@
+use std::sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}};
+
 use crate::{Board, moves::get_lexrep};
 use raylib::prelude::*;
 
 const TILE_SIZE: i32 = 80;
 
-pub fn draw(board: &Board) {
+pub fn draw(board: Arc<Mutex<Board>>, ready: Arc<AtomicBool>) {
     let (mut r1, thread) = raylib::init()
         .size(TILE_SIZE * 8, TILE_SIZE * 8)
         .title("chess3")
         .build();
 
+    ready.store(true, Ordering::SeqCst);
+
     while !r1.window_should_close() {
         let mut d = r1.begin_drawing(&thread);
 
         d.clear_background(Color::DARKGRAY);
-
         draw_board(&mut d);
-        draw_pieces(&mut d, board);
+
+        let board = board.lock().unwrap();
+        draw_pieces(&mut d, &board);
     }
 }
 
