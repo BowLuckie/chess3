@@ -59,8 +59,16 @@ pub struct Move {
     pub to: Coordinate,
 }
 
+fn in_bounds_point(point: Coordinate) -> bool {
+    (0..8).contains(&point.0) && (0..8).contains(&point.1)
+}
+
 impl Move {
+      
     pub fn from(from: Coordinate, to: Coordinate) -> Self {
+        if !(in_bounds_point(from) && in_bounds_point(to)) {
+            panic!("attempted to create a move out ofo bounds!")
+        }
         Move { from, to }
     }
 }
@@ -216,4 +224,6 @@ impl Board {
         ];
         return self.raw_slide(p, row, col, directions, Some(1));
     }
+
+
 }

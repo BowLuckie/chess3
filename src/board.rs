@@ -1,4 +1,4 @@
-use crate::moves::{Colour, Piece, PieceKind, get_lexrep};
+use crate::moves::{Colour, Move, Piece, PieceKind, get_lexrep};
 use std::fmt;
 
 #[derive(Debug, Clone, Copy)]
@@ -65,10 +65,21 @@ impl Board {
         assert!(row < 8 && col < 8, "row or col exceeds 7: {} {}", row, col);
         &self.squares[row as usize][col as usize]
     }
+
+    pub fn raw_move(&mut self, mv: Move) {
+        let (orow, ocol) = mv.from;
+        let (trow, tcol) = mv.to;
+
+        let piece = self.get_piece(orow, ocol)
+            .expect("no piece to move");
+
+        self.squares[orow as usize][ocol as usize] = None;
+        self.squares[trow as usize][tcol as usize] = Some(piece);
+    }
 }
 
 impl fmt::Display for Board {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for row in 0..8 {
             write!(f, "{} ", row)?;
             for col in 0..8 {
