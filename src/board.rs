@@ -5,7 +5,9 @@ use std::{fmt, ops::Not};
 #[allow(dead_code)]
 pub struct Board {
     squares: [[Option<Piece>; 8]; 8],
-    to_move: Colour,
+    pub to_move: Colour,
+    pub white_king: Coordinate,
+    pub black_king: Coordinate,
 }
 
 impl PieceKind {
@@ -85,6 +87,8 @@ impl Board {
         Self {
             squares,
             to_move: White,
+            black_king: (0, 4),
+            white_king: (7, 4),
         }
     }
 
@@ -100,6 +104,9 @@ impl Board {
     }
 
     pub fn raw_move(&mut self, mv: Move) {
+        use PieceKind::*;
+        use Colour::*;
+
         let (orow, ocol) = mv.from;
         let (trow, tcol) = mv.to;
 
@@ -107,6 +114,13 @@ impl Board {
             .expect(&format!("no piece to move at {} {}", orow, ocol));
 
         piece.has_moved = true;
+
+        if piece.kind == King {
+            match piece.colour {
+                White => self.white_king = mv.to,
+                Black => self.black_king = mv.to,
+            }
+        }
 
         self.squares[orow as usize][ocol as usize] = None;
         self.squares[trow as usize][tcol as usize] = Some(piece);
@@ -117,17 +131,40 @@ impl Board {
             return false;
         }
 
-        let mut copy = self.clone();
+        let mut copy: Board = self.clone();
         copy.raw_move(mv);
-        return true; // TODO write in_check function
+        return !copy.king_in_check(self.to_move); // TODO write in_check function
     }
 
     pub fn switch_turn(&mut self) {
         self.to_move = !self.to_move;
     }
 
-    pub fn turn(&self) -> Colour {
-        self.to_move
+    pub fn king_in_check(&self, colour: Colour) -> bool {
+        let king_pos = match colour {
+            Colour::White => self.white_king,
+            Colour::Black => self.black_king,
+        };
+        for row in 0..8 {
+            for col in 0..8 {
+                let Some(p) = *self.get_piece(row, col) else {
+                    continue;
+                };
+
+                if p.colour == colour {
+                    continue;
+                }
+
+                if self
+                    .get_moves_unchecked(row, col)
+                    .iter()
+                    .any(|mv| mv.to == king_pos)
+                {
+                    return true;
+                }
+            }
+        }
+        false
     }
 }
 

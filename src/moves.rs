@@ -8,7 +8,7 @@ pub enum Colour {
     Black,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PieceKind {
     Pawn,
     Knight,
@@ -68,7 +68,7 @@ impl Board {
 
     fn dispatch(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
         use PieceKind::*;
-        if p.colour != self.turn() {
+        if p.colour != self.to_move {
             return vec![];
         }
         match p.kind {
