@@ -5,7 +5,7 @@ use raylib::prelude::*;
 
 const TILE_SIZE: i32 = 80;
 
-pub fn draw(board: Arc<Mutex<Board>>, ready: Arc<AtomicBool>, input: Arc<Mutex<InputState>>) {
+pub fn create_window(board: Arc<Mutex<Board>>, ready: Arc<AtomicBool>, input: Arc<Mutex<InputState>>) {
     let (mut rl, thread) = raylib::init()
         .size(TILE_SIZE * 8, TILE_SIZE * 8)
         .title("chess3")
@@ -22,9 +22,11 @@ pub fn draw(board: Arc<Mutex<Board>>, ready: Arc<AtomicBool>, input: Arc<Mutex<I
     ready.store(true, Ordering::SeqCst);
 
     while !rl.window_should_close() {
-        if rl.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT) {
+        if rl.is_mouse_button_pressed(MouseButton::MOUSE_BUTTON_LEFT) {
             let col = (rl.get_mouse_x() / TILE_SIZE) as i8;
             let row = (rl.get_mouse_y() / TILE_SIZE) as i8;
+
+            println!("{:?} {:?}", row, col);
 
             let mut input_state = input.lock().unwrap();
             match input_state.selected {

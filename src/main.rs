@@ -1,11 +1,11 @@
 #![allow(clippy::needless_return)]
 
-use std::{io::Write, sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}}, thread, time::Duration};
+use std::{sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}}, thread, time::Duration};
 use board::Board;
-use crate::input::InputState;
+use crate::{input::InputState, moves::Piece};
 
 mod board;
-mod draw;
+mod window;
 mod moves;
 mod input;
 
@@ -28,7 +28,7 @@ fn main() {
         logic(logic_board, logic_input);
     });
 
-    draw::draw(board, ready, input);
+    window::create_window(board, ready, input);
 }
 
 /// unlocks the board and computes a closure on it
@@ -37,11 +37,16 @@ fn with_board<T>(board: &Arc<Mutex<Board>>, f: impl FnOnce(&mut Board) -> T) -> 
 }
 
 fn logic(board: Arc<Mutex<Board>>, input: Arc<Mutex<InputState>>) {
+
+    with_board(&board, |board_| println!("{}", board_));
+
     loop {
         let mv = input.lock().unwrap().pending_move.take();
 
+
         if let Some(mv) = mv {
-            with_board(&board, |board_| board_.raw_move(mv))
+            let piece: &Option<Piece> = with_board(&board, |b| -> &Option<Piece> {b.get_piece(mv.from.0, mv.from.1)});
+            with_board(&board, |b| b.checked_move(mv))
         }
 
         thread::sleep(Duration::from_millis(16));

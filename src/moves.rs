@@ -1,3 +1,5 @@
+#![allow(unused)] // TODO
+
 use crate::board::Board;
 
 pub type Coordinate = (i8, i8);
@@ -197,6 +199,4 @@ impl Board {
         ];
         return self.raw_slide(p, row, col, directions, Some(1));
     }
-
-
 }

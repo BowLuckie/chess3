@@ -1,5 +1,6 @@
 use crate::moves::{Coordinate, Move};
 
+#[derive(Debug, Clone)]
 pub struct InputState {
     pub selected: Option<Coordinate>,
     pub pending_move: Option<Move>

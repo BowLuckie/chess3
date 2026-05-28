@@ -1,5 +1,5 @@
-use crate::moves::{Colour, Move, Piece, PieceKind};
-use std::fmt::{self, write};
+use crate::moves::{Colour, Coordinate, Move, Piece, PieceKind};
+use std::fmt;
 
 #[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
@@ -93,15 +93,30 @@ impl Board {
         &self.squares[row as usize][col as usize]
     }
 
+    pub fn get_piece_by_cord(&self, coordinate: Coordinate) -> &Option<Piece> {
+        let row = coordinate.0;
+        let col = coordinate.1;
+        self.get_piece(row, col)
+    }
+
     pub fn raw_move(&mut self, mv: Move) {
         let (orow, ocol) = mv.from;
         let (trow, tcol) = mv.to;
 
         let piece = self.get_piece(orow, ocol)
-            .expect("no piece to move");
+            .expect(&format!("no piece to move at {} {}", orow, ocol));
 
         self.squares[orow as usize][ocol as usize] = None;
         self.squares[trow as usize][tcol as usize] = Some(piece);
+    }
+
+    pub fn checked_move(&mut self, mv: Move) {
+        let origin = mv.from;
+        let piece = self.get_piece_by_cord(origin);
+
+        if let Some(_) = piece {
+            self.raw_move(mv);
+        }
     }
 }
 
