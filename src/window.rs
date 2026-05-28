@@ -1,9 +1,9 @@
 use std::sync::{Arc, Mutex, MutexGuard, atomic::{AtomicBool, Ordering}};
 
-use crate::{Board, input::InputState, moves::{Coordinate, Move, Piece}};
+use crate::{Board, input::InputState, moves::{Coordinate, Piece}, input};
 use raylib::prelude::*;
 
-const TILE_SIZE: i32 = 80;
+pub const TILE_SIZE: i32 = 80;
 
 pub fn chess_window(board: Arc<Mutex<Board>>, ready: Arc<AtomicBool>, input: Arc<Mutex<InputState>>) {
     let (mut rl, thread) = raylib::init()
@@ -25,30 +25,7 @@ pub fn chess_window(board: Arc<Mutex<Board>>, ready: Arc<AtomicBool>, input: Arc
 
     while !rl.window_should_close() {
         if rl.is_mouse_button_pressed(MouseButton::MOUSE_BUTTON_LEFT) {
-            let col = (rl.get_mouse_x() / TILE_SIZE) as i8;
-            let row = (rl.get_mouse_y() / TILE_SIZE) as i8;
-
-            let mut input_state = input.lock().unwrap();
-            let new = (row, col);
-            let selected_old = input_state.selected;
-            let board_guard = board.lock().unwrap();
-            match selected_old {
-                Some(old) => {
-                    if old == new {
-                        input_state.selected = None;
-                    } else {
-                        let old_piece = board_guard.get_piece_by_cord(old);
-                        match old_piece {
-                            Some(_) => {
-                                input_state.selected = None;
-                                input_state.push_pending(Some(Move::new(old, new))); 
-                            },
-                            None => input_state.selected = Some(new),
-                        }
-                    }
-                },
-                None => input_state.selected = Some(new),
-            }
+            input::handle_click(&board, &input, &rl);
         }
 
         highlighted.clear();
@@ -63,6 +40,10 @@ pub fn chess_window(board: Arc<Mutex<Board>>, ready: Arc<AtomicBool>, input: Arc
 
         let board: MutexGuard<'_, Board> = board.lock().unwrap();
         draw_pieces(&mut d, &board, &spritesheet, sprite_w, sprite_h);
+
+        if let Some((row, col)) = input.lock().unwrap().selected {
+            draw_move_indacators(&mut d, board.get_moves(row, col).iter().map(|mv| mv.to).collect());
+        }
     }
 }
 
@@ -114,6 +95,14 @@ fn draw_pieces(d: &mut RaylibDrawHandle, board: &Board, spritesheet: &Texture2D,
                 d.draw_texture_pro(spritesheet, src, dst, Vector2::zero(), 0.0, Color::WHITE);
             }
         }
+    }
+}
+
+fn draw_move_indacators(d: &mut RaylibDrawHandle, squares: Vec<Coordinate>) {
+    for (row, col) in squares {
+        let x = col as i32 * TILE_SIZE;
+        let y = row as i32 * TILE_SIZE;
+        d.draw_circle(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE as f32 / 6.0, Color::new(0, 0, 0, 100));
     }
 }
 

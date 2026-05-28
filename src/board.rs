@@ -103,23 +103,23 @@ impl Board {
         let (orow, ocol) = mv.from;
         let (trow, tcol) = mv.to;
 
-        let piece = self.get_piece(orow, ocol)
+        let mut piece = self.get_piece(orow, ocol)
             .expect(&format!("no piece to move at {} {}", orow, ocol));
+
+        piece.has_moved = true;
 
         self.squares[orow as usize][ocol as usize] = None;
         self.squares[trow as usize][tcol as usize] = Some(piece);
     }
 
     pub fn check_move(&self, mv: Move) -> bool {
-        let origin: Coordinate = mv.from;
-        let (orow, ocol) = origin;
-        let piece: Option<Piece> = *self.get_piece_by_cord(origin);
-        if piece.is_none() {
+        if !self.get_moves_unchecked(mv.from.0, mv.from.1).contains(&mv) {
             return false;
         }
-        let moves_unchecked = self.get_moves(orow, ocol);
-        // TODO move unwinding
-        return moves_unchecked.contains(&mv);
+
+        let mut copy = self.clone();
+        copy.raw_move(mv);
+        return true; // TODO write in_check function
     }
 
     pub fn switch_turn(&mut self) {

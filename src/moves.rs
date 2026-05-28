@@ -32,6 +32,10 @@ pub struct Move {
     pub to: Coordinate,
 }
 
+fn in_bounds(r: i8, c: i8) -> bool {
+    (0..8).contains(&r) && (0..8).contains(&c)
+}
+
 fn in_bounds_point(point: Coordinate) -> bool {
     (0..8).contains(&point.0) && (0..8).contains(&point.1)
 }
@@ -40,7 +44,7 @@ impl Move {
       
     pub fn new(from: Coordinate, to: Coordinate) -> Self {
         if !(in_bounds_point(from) && in_bounds_point(to)) {
-            panic!("attempted to create a move out ofo bounds!")
+            panic!("attempted to create a move out of bounds!")
         }
         Move { from, to }
     }
@@ -48,10 +52,18 @@ impl Move {
 
 impl Board {
     pub fn get_moves(&self, row: i8, col: i8) -> Vec<Move> {
+        self.get_moves_unchecked(row, col)
+            .into_iter()
+            .filter(|mv| self.check_move(*mv))
+            .collect()
+    }
+
+    pub fn get_moves_unchecked(&self, row: i8, col: i8) -> Vec<Move> {
         match *self.get_piece(row, col) {
             Some(p) => self.dispatch(p, row, col),
             None => vec![],
         }
+
     }
 
     fn dispatch(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
@@ -69,9 +81,6 @@ impl Board {
         }
     }
 
-    fn in_bounds(&self, r: i8, c: i8) -> bool {
-        (0..8).contains(&r) && (0..8).contains(&c)
-    }
 
     fn pawn_moves(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
         let dir = match p.colour {
@@ -83,18 +92,18 @@ impl Board {
         let origin = (row, col);
         let new_row = row + dir;
 
-        if self.in_bounds(new_row, col) && self.get_piece(new_row, col).is_none() {
+        if in_bounds(new_row, col) && self.get_piece(new_row, col).is_none() {
             moves.push(Move::new(origin, (new_row, col)));
 
             let two_row = new_row + dir;
-            if !p.has_moved && self.in_bounds(two_row, col) && self.get_piece(two_row, col).is_none() {
+            if !p.has_moved && in_bounds(two_row, col) && self.get_piece(two_row, col).is_none() {
                 moves.push(Move::new(origin, (two_row, col)));
             }
         }
 
         for dc in [-1, 1] {
             let new_col = col + dc;
-            if self.in_bounds(new_row, new_col) {
+            if in_bounds(new_row, new_col) {
                 if let Some(target) = self.get_piece(new_row, new_col) {
                     if target.colour != p.colour {
                         moves.push(Move::new(origin, (new_row, new_col)));
@@ -132,7 +141,7 @@ impl Board {
             let (mut trow, mut tcol) = (row + drow, col + dcol);
             let mut distance: i8 = 0;
 
-            while self.in_bounds(trow, tcol) && distance < max.unwrap_or(8) {
+            while in_bounds(trow, tcol) && distance < max.unwrap_or(8) {
                 let target = self.get_piece(trow, tcol);
 
                 if target.is_none() {
