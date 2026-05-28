@@ -1,11 +1,11 @@
 use crate::moves::{Colour, Coordinate, Move, Piece, PieceKind};
-use std::fmt;
+use std::{fmt, ops::Not};
 
 #[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
 pub struct Board {
     squares: [[Option<Piece>; 8]; 8],
-    pub to_move: Colour,
+    to_move: Colour,
 }
 
 impl PieceKind {
@@ -110,12 +110,34 @@ impl Board {
         self.squares[trow as usize][tcol as usize] = Some(piece);
     }
 
-    pub fn checked_move(&mut self, mv: Move) {
-        let origin = mv.from;
-        let piece = self.get_piece_by_cord(origin);
+    pub fn check_move(&self, mv: Move) -> bool {
+        let origin: Coordinate = mv.from;
+        let (orow, ocol) = origin;
+        let piece: Option<Piece> = *self.get_piece_by_cord(origin);
+        if piece.is_none() {
+            return false;
+        }
+        let moves_unchecked = self.get_moves(orow, ocol);
+        // TODO move unwinding
+        return moves_unchecked.contains(&mv);
+    }
 
-        if let Some(_) = piece {
-            self.raw_move(mv);
+    pub fn switch_turn(&mut self) {
+        self.to_move = !self.to_move;
+    }
+
+    pub fn turn(&self) -> Colour {
+        self.to_move
+    }
+}
+
+impl Not for Colour {
+    type Output = Self;
+    fn not(self) -> Self::Output {
+        use Colour::*;
+        match self {
+            White => Black,
+            Black => White,
         }
     }
 }
@@ -123,13 +145,23 @@ impl Board {
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = String::new();
+
         for row in 0..8 {
             out.push_str(&format!("{} ", row));
+
             for col in 0..8 {
                 out.push_str(&format!("[{}]", get_lexrep(self.get_piece(row, col))));
             }
+
             out.push('\n');
         }
+
+        out.push_str("  ");
+        for col in 0..8 {
+            out.push_str(&format!(" {} ", col));
+        }
+        out.push('\n');
+
         write!(f, "{}", out)
     }
 }

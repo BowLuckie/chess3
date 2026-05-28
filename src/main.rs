@@ -2,7 +2,7 @@
 
 use std::{sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}}, thread, time::Duration};
 use board::Board;
-use crate::{input::InputState, moves::Piece};
+use crate::input::InputState;
 
 mod board;
 mod window;
@@ -28,7 +28,7 @@ fn main() {
         logic(logic_board, logic_input);
     });
 
-    window::create_window(board, ready, input);
+    window::chess_window(board, ready, input);
 }
 
 /// unlocks the board and computes a closure on it
@@ -41,12 +41,16 @@ fn logic(board: Arc<Mutex<Board>>, input: Arc<Mutex<InputState>>) {
     with_board(&board, |board_| println!("{}", board_));
 
     loop {
-        let mv = input.lock().unwrap().pending_move.take();
-
+        let mv = input.lock().unwrap().take_pending();
 
         if let Some(mv) = mv {
-            let piece: &Option<Piece> = with_board(&board, |b| -> &Option<Piece> {b.get_piece(mv.from.0, mv.from.1)});
-            with_board(&board, |b| b.checked_move(mv))
+            with_board(&board, |b| {
+                if b.check_move(mv) {
+                    b.raw_move(mv);
+                    b.switch_turn();
+                }
+            })
+
         }
 
         thread::sleep(Duration::from_millis(16));

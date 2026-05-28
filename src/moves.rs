@@ -1,5 +1,3 @@
-#![allow(unused)] // TODO
-
 use crate::board::Board;
 
 pub type Coordinate = (i8, i8);
@@ -27,7 +25,7 @@ pub struct Piece {
     pub has_moved: bool,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[allow(dead_code)]
 pub struct Move {
     pub from: Coordinate,
@@ -40,7 +38,7 @@ fn in_bounds_point(point: Coordinate) -> bool {
 
 impl Move {
       
-    pub fn from(from: Coordinate, to: Coordinate) -> Self {
+    pub fn new(from: Coordinate, to: Coordinate) -> Self {
         if !(in_bounds_point(from) && in_bounds_point(to)) {
             panic!("attempted to create a move out ofo bounds!")
         }
@@ -58,6 +56,9 @@ impl Board {
 
     fn dispatch(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
         use PieceKind::*;
+        if p.colour != self.turn() {
+            return vec![];
+        }
         match p.kind {
             Pawn => self.pawn_moves(p, row, col),
             Knight => self.knight_moves(p, row, col),
@@ -83,11 +84,11 @@ impl Board {
         let new_row = row + dir;
 
         if self.in_bounds(new_row, col) && self.get_piece(new_row, col).is_none() {
-            moves.push(Move::from(origin, (new_row, col)));
+            moves.push(Move::new(origin, (new_row, col)));
 
             let two_row = new_row + dir;
             if !p.has_moved && self.in_bounds(two_row, col) && self.get_piece(two_row, col).is_none() {
-                moves.push(Move::from(origin, (two_row, col)));
+                moves.push(Move::new(origin, (two_row, col)));
             }
         }
 
@@ -96,7 +97,7 @@ impl Board {
             if self.in_bounds(new_row, new_col) {
                 if let Some(target) = self.get_piece(new_row, new_col) {
                     if target.colour != p.colour {
-                        moves.push(Move::from(origin, (new_row, new_col)));
+                        moves.push(Move::new(origin, (new_row, new_col)));
                     }
                 }
             }
@@ -118,7 +119,7 @@ impl Board {
             if !(0..8).contains(&nr) || !(0..8).contains(&nc) { return None; }
             let target = self.get_piece(nr, nc);
             if target.is_some_and(|t | t.colour == p.colour) { return None; }
-            Some(Move::from(origin, (nr, nc)))
+            Some(Move::new(origin, (nr, nc)))
         }).collect();
         return moves;
     }
@@ -135,9 +136,9 @@ impl Board {
                 let target = self.get_piece(trow, tcol);
 
                 if target.is_none() {
-                    moves.push(Move::from(origin, (trow, tcol)));
+                    moves.push(Move::new(origin, (trow, tcol)));
                 } else if target.unwrap().colour != p.colour {
-                    moves.push(Move::from(origin, (trow, tcol)));
+                    moves.push(Move::new(origin, (trow, tcol)));
                     break;
                 } else {
                     break;
