@@ -14,10 +14,10 @@ fn main() {
     let board: Arc<Mutex<Board>> = Arc::new(Mutex::new(Board::new()));
     let ready: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
     let input: Arc<Mutex<InputState>> = Arc::new(Mutex::new(InputState::new()));
-    let logic_input = Arc::clone(&input);
+    let logic_input: Arc<Mutex<InputState>> = Arc::clone(&input);
 
-    let logic_board = Arc::clone(&board);
-    let window_ready = Arc::clone(&ready);
+    let logic_board: Arc<Mutex<Board>> = Arc::clone(&board);
+    let window_ready: Arc<AtomicBool> = Arc::clone(&ready);
 
     
     thread::spawn(move || {

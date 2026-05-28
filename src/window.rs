@@ -41,8 +41,9 @@ pub fn chess_window(board: Arc<Mutex<Board>>, ready: Arc<AtomicBool>, input: Arc
         let board: MutexGuard<'_, Board> = board.lock().unwrap();
         draw_pieces(&mut d, &board, &spritesheet, sprite_w, sprite_h);
 
-        if let Some((row, col)) = input.lock().unwrap().selected {
-            draw_move_indacators(&mut d, board.get_moves(row, col).iter().map(|mv| mv.to).collect());
+        let inp = input.lock().unwrap();
+        if inp.selected.is_some() {
+            draw_move_indacators(&mut d, inp.legal_moves.iter().map(|mv| mv.to).collect());
         }
     }
 }
