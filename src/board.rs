@@ -1,4 +1,4 @@
-use crate::moves::{Colour, Coordinate, Move, Piece, PieceKind};
+use crate::moves::{Colour::{self, White}, Coordinate, Move, Piece, PieceKind};
 use std::{fmt, ops::Not};
 
 #[derive(Debug, Clone, Copy)]
@@ -161,8 +161,10 @@ impl Board {
 
         self.squares[orow as usize][ocol as usize] = None;
         self.squares[trow as usize][tcol as usize] = Some(piece);
-        if let Some(winner) = self.check_game_over(self.to_move) {
-            if !simulate {println!("gameover! {:?}", winner)}
+        if !simulate {
+            if let Some(winner) = self.check_game_over(!self.to_move) {
+                println!("gameover! {:?}", winner);
+            }
         }
     }
 
@@ -205,7 +207,24 @@ impl Board {
         false
     }
 
-    pub fn check_game_over(&self, colour: Colour) -> Option<Colour> {
+    pub fn check_game_over(&self, colour: Colour) -> Option<Colour> { // TODO stalemate
+        let mut moves = vec![];
+        for (piece, row, col) in self.as_iter() {
+            if let None = piece {
+                continue;
+            }
+
+            let piece = piece.unwrap();
+
+            if piece.colour != colour {
+                continue;
+            }
+
+            moves.push(self.get_moves(row, col));
+        }
+        if moves.len() == 0 && self.king_in_check(colour) {
+            return Some(!colour)
+        }
         return None;
     }
 }
