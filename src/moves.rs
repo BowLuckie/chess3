@@ -52,33 +52,33 @@ impl Move {
 
 impl Board {
     pub fn get_moves(&self, row: i8, col: i8) -> Vec<Move> {
-        self.get_moves_unchecked(row, col)
+        self.get_moves_unchecked(row, col, false)
             .into_iter()
             .filter(|mv| self.check_move(*mv))
             .collect()
     }
 
-    pub fn get_moves_unchecked(&self, row: i8, col: i8) -> Vec<Move> {
+    pub fn get_moves_unchecked(&self, row: i8, col: i8, simulate: bool) -> Vec<Move> {
         match *self.get_piece(row, col) {
-            Some(p) => self.dispatch(p, row, col),
+            Some(p) => self.dispatch(p, row, col, simulate),
             None => vec![],
         }
-
+     
     }
 
-    fn dispatch(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
+    fn dispatch(&self, p: Piece, row: i8, col: i8, simulate: bool) -> Vec<Move> {
         use PieceKind::*;
-        if p.colour != self.to_move {
+        if (!simulate) && (p.colour != self.to_move) {
             return vec![];
         }
-        match p.kind {
+        return match p.kind {
             Pawn => self.pawn_moves(p, row, col),
             Knight => self.knight_moves(p, row, col),
             Queen => self.queen_moves(p, row, col),
             Rook => self.rook_moves(p, row, col),
             Bishop => self.bishop_moves(p, row, col),
             King => self.king_moves(p, row, col),
-        }
+        };
     }
 
 

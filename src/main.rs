@@ -38,7 +38,7 @@ fn with_board<T>(board: &Arc<Mutex<Board>>, f: impl FnOnce(&mut Board) -> T) -> 
 
 fn logic(board: Arc<Mutex<Board>>, input: Arc<Mutex<InputState>>) {
 
-    with_board(&board, |board_| println!("{}", board_));
+    with_board(&board, |b| println!("{}", b));
 
     loop {
         let mv = input.lock().unwrap().take_pending();

@@ -127,13 +127,13 @@ impl Board {
     }
 
     pub fn check_move(&self, mv: Move) -> bool {
-        if !self.get_moves_unchecked(mv.from.0, mv.from.1).contains(&mv) {
+        if !self.get_moves_unchecked(mv.from.0, mv.from.1, false).contains(&mv) {
             return false;
         }
 
         let mut copy: Board = self.clone();
         copy.raw_move(mv);
-        return !copy.king_in_check(self.to_move); // TODO write in_check function
+        return !copy.king_in_check(self.to_move); 
     }
 
     pub fn switch_turn(&mut self) {
@@ -141,6 +141,7 @@ impl Board {
     }
 
     pub fn king_in_check(&self, colour: Colour) -> bool {
+        println!("check");
         let king_pos = match colour {
             Colour::White => self.white_king,
             Colour::Black => self.black_king,
@@ -156,10 +157,11 @@ impl Board {
                 }
 
                 if self
-                    .get_moves_unchecked(row, col)
+                    .get_moves_unchecked(row, col, true)
                     .iter()
                     .any(|mv| mv.to == king_pos)
                 {
+                    println!("sucsess");
                     return true;
                 }
             }
