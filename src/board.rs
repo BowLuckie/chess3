@@ -14,7 +14,7 @@ use std::{
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct Board {
-    squares: [[Option<Piece>; 8]; 8],
+    pub squares: [[Option<Piece>; 8]; 8],
     pub to_move: Colour,
     pub white_king: Coordinate,
     pub black_king: Coordinate,
@@ -191,10 +191,10 @@ impl Board {
         let mut squares: [[Option<Piece>; 8]; 8] = [[None; 8]; 8];
 
         let place = |squares: &mut [[Option<Piece>; 8]; 8],
-                    row: usize,
-                    col: usize,
-                    kind: PieceKind,
-                    colour: Colour| {
+                     row: usize,
+                     col: usize,
+                     kind: PieceKind,
+                     colour: Colour| {
             squares[row][col] = Some(Piece {
                 kind,
                 colour,
@@ -203,13 +203,13 @@ impl Board {
         };
 
         place(&mut squares, 0, 1, Queen, Black); // b8
-        place(&mut squares, 1, 0, Pawn,  Black); // a7
-        place(&mut squares, 1, 1, Pawn,  Black); // b7
-        place(&mut squares, 0, 4, King,  Black); // e8 (correct square)
+        place(&mut squares, 1, 0, Pawn, Black); // a7
+        place(&mut squares, 1, 1, Pawn, Black); // b7
+        place(&mut squares, 0, 4, King, Black); // e8 (correct square)
 
-        place(&mut squares, 7, 0, Rook,  White); // a1
-        place(&mut squares, 7, 7, Rook,  White); // h1
-        place(&mut squares, 7, 4, King,  White); // e1 (correct square)
+        place(&mut squares, 7, 0, Rook, White); // a1
+        place(&mut squares, 7, 7, Rook, White); // h1
+        place(&mut squares, 7, 4, King, White); // e1 (correct square)
 
         Self {
             squares,
@@ -255,10 +255,6 @@ impl Board {
             match piece.colour {
                 White => self.white_king = mv.to,
                 Black => self.black_king = mv.to,
-            }
-
-            if (mv.from.1 - mv.to.1).abs() == 2 {
-                // TODO move rook
             }
         }
 

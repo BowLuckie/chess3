@@ -205,6 +205,8 @@ impl Board {
     }
 
     fn king_moves(&self, p: Piece, row: i8, col: i8, simulate: bool) -> Vec<Move> {
+        use Colour::*;
+
         let directions = vec![
             (1, 0),
             (1, 1),
@@ -215,35 +217,51 @@ impl Board {
             (0, -1),
             (1, -1),
         ];
+
         let mut moves = self.raw_slide(p, row, col, directions, Some(1));
-        
-        // castling; TODO castling trhough check
-        if p.has_moved
-            || ![(7, 4), (0, 4)].contains(&(row, col))
-            || simulate
-        {
+
+        // no castling
+        if simulate || p.has_moved || ![(7, 4), (0, 4)].contains(&(row, col)) {
             return moves;
         }
 
-        let (rook1, rook2, back_rank) = match p.colour {
-            Colour::White => (self.get_piece(7, 0), self.get_piece(7, 7), 7),
-            Colour::Black => (self.get_piece(0, 0), self.get_piece(0, 7), 0),
+        let back_rank = match p.colour {
+            White => 7,
+            Black => 0,
         };
 
-        if rook1.is_some_and(|pr| !pr.has_moved) {
-            if let (None, None, None) = (
-                self.get_piece(back_rank, 1),
-                self.get_piece(back_rank, 2),
-                self.get_piece(back_rank, 3),
-            ) {
-                moves.push(Move::new((back_rank, 4), (back_rank, 2)));
-            }
+        let can_castle = |rook_col: i8, empty: &[i8], king_path: &[i8]| {
+            let rook = self.get_piece(back_rank, rook_col);
+
+            rook.is_some_and(|r| !r.has_moved)
+                && empty
+                    .iter()
+                    .all(|&c| self.get_piece(back_rank, c).is_none())
+                && king_path.iter().all(|&c| {
+                    let mut copy = self.clone();
+
+                    copy.squares[back_rank as usize][4] = None;
+                    copy.squares[back_rank as usize][c as usize] = Some(p);
+
+                    match p.colour {
+                        White => copy.white_king = (back_rank, c),
+                        Black => copy.black_king = (back_rank, c),
+                    }
+
+                    !copy.king_in_check(p.colour)
+                })
+        };
+
+        // queenside
+        if can_castle(0, &[1, 2, 3], &[4, 3, 2]) {
+            moves.push(Move::new((back_rank, 4), (back_rank, 2)));
         }
-        if rook2.is_some_and(|pr| !pr.has_moved) {
-            if let (None, None) = (self.get_piece(back_rank, 5), self.get_piece(back_rank, 6)) {
-                moves.push(Move::new((back_rank, 4), (back_rank, 6)));
-            }
+
+        // kingside
+        if can_castle(7, &[5, 6], &[4, 5, 6]) {
+            moves.push(Move::new((back_rank, 4), (back_rank, 6)));
         }
+
         moves
     }
 }
