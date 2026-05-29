@@ -15,7 +15,7 @@ pub enum PieceKind {
     Queen,
     Rook,
     Bishop,
-    King
+    King,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -41,7 +41,6 @@ fn in_bounds_point(point: Coordinate) -> bool {
 }
 
 impl Move {
-      
     pub fn new(from: Coordinate, to: Coordinate) -> Self {
         if !(in_bounds_point(from) && in_bounds_point(to)) {
             panic!("attempted to create a move out of bounds!")
@@ -63,7 +62,6 @@ impl Board {
             Some(p) => self.dispatch(p, row, col, simulate),
             None => vec![],
         }
-     
     }
 
     fn dispatch(&self, p: Piece, row: i8, col: i8, simulate: bool) -> Vec<Move> {
@@ -80,7 +78,6 @@ impl Board {
             King => self.king_moves(p, row, col),
         };
     }
-
 
     fn pawn_moves(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
         let dir = match p.colour {
@@ -110,30 +107,48 @@ impl Board {
                     }
                 }
             }
-        };
+        }
 
         moves
     }
 
     fn knight_moves(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
         const KNIGHT_DELTAS: [(i8, i8); 8] = [
-            (-2, -1), (-2, 1),
-            (-1, -2), (-1, 2),
-            ( 1, -2), ( 1, 2),
-            ( 2, -1), ( 2, 1),
+            (-2, -1),
+            (-2, 1),
+            (-1, -2),
+            (-1, 2),
+            (1, -2),
+            (1, 2),
+            (2, -1),
+            (2, 1),
         ];
         let origin = (row, col);
-        let moves: Vec<Move> = KNIGHT_DELTAS.iter().filter_map(|(dr, dc)| {
-            let (nr, nc) = (row + dr, col + dc);
-            if !(0..8).contains(&nr) || !(0..8).contains(&nc) { return None; }
-            let target = self.get_piece(nr, nc);
-            if target.is_some_and(|t | t.colour == p.colour) { return None; }
-            Some(Move::new(origin, (nr, nc)))
-        }).collect();
+        let moves: Vec<Move> = KNIGHT_DELTAS
+            .iter()
+            .filter_map(|(dr, dc)| {
+                let (nr, nc) = (row + dr, col + dc);
+                if !(0..8).contains(&nr) || !(0..8).contains(&nc) {
+                    return None;
+                }
+                let target = self.get_piece(nr, nc);
+                if target.is_some_and(|t| t.colour == p.colour) {
+                    return None;
+                }
+                Some(Move::new(origin, (nr, nc)))
+            })
+            .collect();
         return moves;
     }
 
-    fn raw_slide(&self, p: Piece, row: i8, col: i8, directions: Vec<Coordinate>, max: Option<i8>) -> Vec<Move> {
+    fn raw_slide(
+        &self,
+        p: Piece,
+        row: i8,
+        col: i8,
+        directions: Vec<Coordinate>,
+        max: Option<i8>,
+    ) -> Vec<Move> {
         let mut moves = Vec::new();
         let origin = (row, col);
 
@@ -164,47 +179,37 @@ impl Board {
 
     fn queen_moves(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
         let directions = vec![
-            (1, 0), 
-            (1, 1), 
-            (0, 1),     
+            (1, 0),
+            (1, 1),
+            (0, 1),
             (-1, 1),
-            (-1, 0),     
+            (-1, 0),
             (-1, -1),
-            (0, -1),    
+            (0, -1),
             (1, -1),
         ];
         return self.raw_slide(p, row, col, directions, None);
     }
 
     fn rook_moves(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
-       let directions = vec![
-            (1, 0), 
-            (0, 1),     
-            (-1, 0),     
-            (0, -1),    
-        ];
+        let directions = vec![(1, 0), (0, 1), (-1, 0), (0, -1)];
         return self.raw_slide(p, row, col, directions, None);
     }
 
     fn bishop_moves(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
-       let directions = vec![
-            (1, 1), 
-            (-1, 1),
-            (-1, -1),
-            (1, -1),
-        ];
+        let directions = vec![(1, 1), (-1, 1), (-1, -1), (1, -1)];
         return self.raw_slide(p, row, col, directions, None);
     }
-    
+
     fn king_moves(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
         let directions = vec![
-            (1, 0), 
-            (1, 1), 
-            (0, 1),     
+            (1, 0),
+            (1, 1),
+            (0, 1),
             (-1, 1),
-            (-1, 0),     
+            (-1, 0),
             (-1, -1),
-            (0, -1),    
+            (0, -1),
             (1, -1),
         ];
         return self.raw_slide(p, row, col, directions, Some(1));

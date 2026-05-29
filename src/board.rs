@@ -1,13 +1,27 @@
-use crate::moves::{Colour::{self, White}, Coordinate, Move, Piece, PieceKind};
-use std::{fmt, ops::Not};
+use crate::{input::InputState, moves::{
+    Colour::{self},
+    Coordinate, Move, Piece, PieceKind,
+}};
+use std::{fmt, ops::Not, sync::{Arc, Mutex}};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct Board {
     squares: [[Option<Piece>; 8]; 8],
     pub to_move: Colour,
     pub white_king: Coordinate,
     pub black_king: Coordinate,
+    pub gamestate: GameState,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+
+pub enum GameState {
+    Playing,
+    Checkmate(Colour),
+    Stalemate,
+    InsufficientMat,
+    FiftyMove
 }
 
 pub struct SquareIter<'a> {
@@ -34,6 +48,11 @@ impl<'a> Iterator for SquareIter<'a> {
     }
 }
 
+pub fn reset(board: &Arc<Mutex<Board>>, input: &Arc<Mutex<InputState>>) {
+    *board.lock().unwrap() = Board::new();
+    *input.lock().unwrap() = InputState::new();
+}
+
 pub fn square_iter() -> impl Iterator<Item = (i8, i8)> {
     (0..64).map(|idx| {
         let row = 7 - (idx / 8) as i8;
@@ -42,12 +61,11 @@ pub fn square_iter() -> impl Iterator<Item = (i8, i8)> {
     })
 }
 
-
 impl PieceKind {
     fn base_char(&self) -> char {
-    use PieceKind::*;
+        use PieceKind::*;
         match self {
-            Pawn   => 'P',
+            Pawn => 'P',
             Knight => 'N',
             Queen => 'Q',
             Rook => 'R',
@@ -71,19 +89,18 @@ pub fn get_lexrep(piece: &Option<Piece>) -> String {
 }
 
 impl Board {
+    #[allow(unused)]
     pub fn new() -> Self {
         use Colour::*;
         use PieceKind::*;
 
         let mut squares: [[Option<Piece>; 8]; 8] = [[None; 8]; 8];
 
-        let place = |
-            squares: &mut [[Option<Piece>; 8]; 8],
-            row: usize,
-            col: usize,
-            kind: PieceKind,
-            colour: Colour,
-        | {
+        let place = |squares: &mut [[Option<Piece>; 8]; 8],
+                     row: usize,
+                     col: usize,
+                     kind: PieceKind,
+                     colour: Colour| {
             squares[row][col] = Some(Piece {
                 kind,
                 colour,
@@ -122,11 +139,50 @@ impl Board {
             to_move: White,
             black_king: (0, 4),
             white_king: (7, 4),
+            gamestate: GameState::Playing,
+        }
+    }
+
+
+    #[allow(unused)]
+    pub fn checkmate_test() -> Self {
+        use Colour::*;
+        use PieceKind::*;
+
+        let mut squares: [[Option<Piece>; 8]; 8] = [[None; 8]; 8];
+
+        let place = |squares: &mut [[Option<Piece>; 8]; 8],
+                     row: usize,
+                     col: usize,
+                     kind: PieceKind,
+                     colour: Colour| {
+            squares[row][col] = Some(Piece {
+                kind,
+                colour,
+                has_moved: false,
+            });
+        };
+
+        place(&mut squares, 0, 0, King, Black); // a8
+        place(&mut squares, 1, 0, Pawn, Black); // a7
+        place(&mut squares, 1, 1, Pawn, Black); // b7
+        place(&mut squares, 1, 2, Queen, White); // c3 
+        place(&mut squares, 7, 4, King, White);
+
+        Self {
+            squares,
+            to_move: White,
+            black_king: (0, 0),
+            white_king: (7, 4),
+            gamestate: GameState::Playing,
         }
     }
 
     pub fn as_iter(&self) -> SquareIter<'_> {
-        SquareIter { board: self, idx: 0 }
+        SquareIter {
+            board: self,
+            idx: 0,
+        }
     }
 
     pub fn get_piece(&self, row: i8, col: i8) -> &Option<Piece> {
@@ -141,13 +197,14 @@ impl Board {
     }
 
     pub fn raw_move(&mut self, mv: Move, simulate: bool) {
-        use PieceKind::*;
         use Colour::*;
+        use PieceKind::*;
 
         let (orow, ocol) = mv.from;
         let (trow, tcol) = mv.to;
 
-        let mut piece = self.get_piece(orow, ocol)
+        let mut piece = self
+            .get_piece(orow, ocol)
             .expect(&format!("no piece to move at {} {}", orow, ocol));
 
         piece.has_moved = true;
@@ -161,21 +218,20 @@ impl Board {
 
         self.squares[orow as usize][ocol as usize] = None;
         self.squares[trow as usize][tcol as usize] = Some(piece);
-        if !simulate {
-            if let Some(winner) = self.check_game_over(!self.to_move) {
-                println!("gameover! {:?}", winner);
-            }
-        }
     }
 
     pub fn check_move(&self, mv: Move) -> bool {
-        if !self.get_moves_unchecked(mv.from.0, mv.from.1, false).contains(&mv) {
+        if !self
+            .get_moves_unchecked(mv.from.0, mv.from.1, false)
+            .contains(&mv)
+        {
             return false;
         }
 
-        let mut copy: Board = self.clone();
-        copy.raw_move(mv, true);
-        return !copy.king_in_check(self.to_move); 
+        let mut simulation_board: Board = self.clone();
+        simulation_board.raw_move(mv, true);
+        let colour = self.get_piece(mv.from.0, mv.from.1).unwrap().colour;
+        return !simulation_board.king_in_check(colour);
     }
 
     pub fn switch_turn(&mut self) {
@@ -203,29 +259,31 @@ impl Board {
             {
                 return true;
             }
-    }
+        }
         false
     }
 
-    pub fn check_game_over(&self, colour: Colour) -> Option<Colour> { // TODO stalemate
-        let mut moves = vec![];
-        for (piece, row, col) in self.as_iter() {
-            if let None = piece {
-                continue;
+    pub fn get_gamestate(&self, colour: Colour) -> GameState {
+        use GameState::*;
+        let total_moves: usize = self
+            .as_iter()
+            .filter_map(|(piece, row, col)| {
+                let piece = piece?;
+                if piece.colour != colour {
+                    return None;
+                }
+                Some(self.get_moves(row, col).len())
+            })
+            .sum();
+
+        if total_moves == 0 {
+            if self.king_in_check(colour) {
+                return Checkmate(!colour);
+            } else {
+                return Stalemate;
             }
-
-            let piece = piece.unwrap();
-
-            if piece.colour != colour {
-                continue;
-            }
-
-            moves.push(self.get_moves(row, col));
         }
-        if moves.len() == 0 && self.king_in_check(colour) {
-            return Some(!colour)
-        }
-        return None;
+        Playing
     }
 }
 
