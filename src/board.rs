@@ -225,16 +225,22 @@ impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = String::new();
 
-        for (_, row, _) in self.as_iter() {
-            out.push_str(&format!("{} ", row));
-
-            for col in 0..8 {
-                out.push_str(&format!("[{}]", get_lexrep(self.get_piece(row, col))));
+        for (row, col) in square_iter() {
+            // Print row label at the start of each row
+            if col == 0 {
+                out.push_str(&format!("{} ", row));
             }
 
-            out.push('\n');
+            let piece = self.get_piece(row, col);
+            out.push_str(&format!("[{}]", get_lexrep(piece)));
+
+            // End of row → newline
+            if col == 7 {
+                out.push('\n');
+            }
         }
 
+        // Column labels
         out.push_str("  ");
         for col in 0..8 {
             out.push_str(&format!(" {} ", col));
