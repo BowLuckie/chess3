@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex, MutexGuard, atomic::{AtomicBool, Ordering}};
 
-use crate::{Board, input::InputState, moves::{Coordinate, Piece}, input};
+use crate::{Board, board::square_iter, input::{self, InputState}, moves::{Coordinate, Piece}};
 use raylib::prelude::*;
 
 pub const TILE_SIZE: i32 = 80;
@@ -62,8 +62,7 @@ fn draw_board(d: &mut RaylibDrawHandle, highlighted: &Vec<Coordinate>) {
     let dark: Color = Color::new(184, 135, 98, 255);
     let light_selected: Color = Color::new(247, 235, 114, 255);
     let dark_selected: Color = Color::new(220, 196, 75, 255);
-    for row in 0..8 {
-        for col in 0..8 {
+    for (row, col) in square_iter() {
             let mut colour: Color = if (row + col) % 2 == 0 { light } else { dark };
             if highlighted.contains(&(row, col)) {
                 colour = if (row + col) % 2 == 0 { light_selected } else { dark_selected }
@@ -77,15 +76,11 @@ fn draw_board(d: &mut RaylibDrawHandle, highlighted: &Vec<Coordinate>) {
                 colour,
             );
         }
-    }
 }
 
 fn draw_pieces(d: &mut RaylibDrawHandle, board: &Board, spritesheet: &Texture2D, sprite_w: f32, sprite_h: f32) {
-    for row in 0..8 {
-        for col in 0..8 {
-            let piece: &Option<Piece> = board.get_piece(row, col);
-
-            if let Some(p) = *piece {
+    for (piece, row, col) in board.as_iter() {
+            if let Some(p) = piece {
                 let src = piece_rect(&p, sprite_w, sprite_h);
                 let dst = Rectangle {
                     x: col as f32 * TILE_SIZE as f32,
@@ -96,7 +91,6 @@ fn draw_pieces(d: &mut RaylibDrawHandle, board: &Board, spritesheet: &Texture2D,
                 d.draw_texture_pro(spritesheet, src, dst, Vector2::zero(), 0.0, Color::WHITE);
             }
         }
-    }
 }
 
 fn draw_move_indacators(d: &mut RaylibDrawHandle, squares: Vec<Coordinate>) {

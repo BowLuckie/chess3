@@ -10,6 +10,39 @@ pub struct Board {
     pub black_king: Coordinate,
 }
 
+pub struct SquareIter<'a> {
+    board: &'a Board,
+    idx: usize,
+}
+
+impl<'a> Iterator for SquareIter<'a> {
+    type Item = (Option<Piece>, i8, i8);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.idx >= 64 {
+            return None;
+        }
+
+        let row = 7 - (self.idx / 8) as i8;
+        let col = (self.idx % 8) as i8;
+
+        let piece = self.board.get_piece(row, col);
+
+        self.idx += 1;
+
+        Some((*piece, row, col))
+    }
+}
+
+pub fn square_iter() -> impl Iterator<Item = (i8, i8)> {
+    (0..64).map(|idx| {
+        let row = 7 - (idx / 8) as i8;
+        let col = (idx % 8) as i8;
+        (row, col)
+    })
+}
+
+
 impl PieceKind {
     fn base_char(&self) -> char {
     use PieceKind::*;
@@ -92,6 +125,10 @@ impl Board {
         }
     }
 
+    pub fn as_iter(&self) -> SquareIter<'_> {
+        SquareIter { board: self, idx: 0 }
+    }
+
     pub fn get_piece(&self, row: i8, col: i8) -> &Option<Piece> {
         assert!(row < 8 && col < 8, "row or col exceeds 7: {} {}", row, col);
         &self.squares[row as usize][col as usize]
@@ -103,7 +140,7 @@ impl Board {
         self.get_piece(row, col)
     }
 
-    pub fn raw_move(&mut self, mv: Move) {
+    pub fn raw_move(&mut self, mv: Move, simulate: bool) {
         use PieceKind::*;
         use Colour::*;
 
@@ -124,6 +161,9 @@ impl Board {
 
         self.squares[orow as usize][ocol as usize] = None;
         self.squares[trow as usize][tcol as usize] = Some(piece);
+        if let Some(winner) = self.check_game_over(self.to_move) {
+            if !simulate {println!("gameover! {:?}", winner)}
+        }
     }
 
     pub fn check_move(&self, mv: Move) -> bool {
@@ -132,7 +172,7 @@ impl Board {
         }
 
         let mut copy: Board = self.clone();
-        copy.raw_move(mv);
+        copy.raw_move(mv, true);
         return !copy.king_in_check(self.to_move); 
     }
 
@@ -141,32 +181,32 @@ impl Board {
     }
 
     pub fn king_in_check(&self, colour: Colour) -> bool {
-        println!("check");
         let king_pos = match colour {
             Colour::White => self.white_king,
             Colour::Black => self.black_king,
         };
-        for row in 0..8 {
-            for col in 0..8 {
-                let Some(p) = *self.get_piece(row, col) else {
-                    continue;
-                };
+        for (piece, row, col) in self.as_iter() {
+            let Some(p) = piece else {
+                continue;
+            };
 
-                if p.colour == colour {
-                    continue;
-                }
-
-                if self
-                    .get_moves_unchecked(row, col, true)
-                    .iter()
-                    .any(|mv| mv.to == king_pos)
-                {
-                    println!("sucsess");
-                    return true;
-                }
+            if p.colour == colour {
+                continue;
             }
-        }
+
+            if self
+                .get_moves_unchecked(row, col, true)
+                .iter()
+                .any(|mv| mv.to == king_pos)
+            {
+                return true;
+            }
+    }
         false
+    }
+
+    pub fn check_game_over(&self, colour: Colour) -> Option<Colour> {
+        return None;
     }
 }
 
@@ -185,7 +225,7 @@ impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = String::new();
 
-        for row in 0..8 {
+        for (_, row, _) in self.as_iter() {
             out.push_str(&format!("{} ", row));
 
             for col in 0..8 {

@@ -46,7 +46,7 @@ fn logic(board: Arc<Mutex<Board>>, input: Arc<Mutex<InputState>>) {
         if let Some(mv) = mv {
             with_board(&board, |b| {
                 if b.check_move(mv) {
-                    b.raw_move(mv);
+                    b.raw_move(mv, false);
                     b.switch_turn();
                 }
             })
