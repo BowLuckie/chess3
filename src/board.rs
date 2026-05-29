@@ -1,8 +1,15 @@
-use crate::{input::InputState, moves::{
-    Colour::{self},
-    Coordinate, Move, Piece, PieceKind,
-}};
-use std::{fmt, ops::Not, sync::{Arc, Mutex}};
+use crate::{
+    input::InputState,
+    moves::{
+        Colour::{self},
+        Coordinate, Move, Piece, PieceKind,
+    },
+};
+use std::{
+    fmt,
+    ops::Not,
+    sync::{Arc, Mutex},
+};
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -21,7 +28,7 @@ pub enum GameState {
     Checkmate(Colour),
     Stalemate,
     InsufficientMat,
-    FiftyMove
+    FiftyMove,
 }
 
 pub struct SquareIter<'a> {
@@ -143,7 +150,6 @@ impl Board {
         }
     }
 
-
     #[allow(unused)]
     pub fn checkmate_test() -> Self {
         use Colour::*;
@@ -178,6 +184,42 @@ impl Board {
         }
     }
 
+    pub fn test_board() -> Self {
+        use Colour::*;
+        use PieceKind::*;
+
+        let mut squares: [[Option<Piece>; 8]; 8] = [[None; 8]; 8];
+
+        let place = |squares: &mut [[Option<Piece>; 8]; 8],
+                    row: usize,
+                    col: usize,
+                    kind: PieceKind,
+                    colour: Colour| {
+            squares[row][col] = Some(Piece {
+                kind,
+                colour,
+                has_moved: false,
+            });
+        };
+
+        place(&mut squares, 0, 1, Queen, Black); // b8
+        place(&mut squares, 1, 0, Pawn,  Black); // a7
+        place(&mut squares, 1, 1, Pawn,  Black); // b7
+        place(&mut squares, 0, 4, King,  Black); // e8 (correct square)
+
+        place(&mut squares, 7, 0, Rook,  White); // a1
+        place(&mut squares, 7, 7, Rook,  White); // h1
+        place(&mut squares, 7, 4, King,  White); // e1 (correct square)
+
+        Self {
+            squares,
+            to_move: White,
+            black_king: (0, 4),
+            white_king: (7, 4),
+            gamestate: GameState::Playing,
+        }
+    }
+
     pub fn as_iter(&self) -> SquareIter<'_> {
         SquareIter {
             board: self,
@@ -196,7 +238,7 @@ impl Board {
         self.get_piece(row, col)
     }
 
-    pub fn raw_move(&mut self, mv: Move, simulate: bool) {
+    pub fn raw_move(&mut self, mv: Move) {
         use Colour::*;
         use PieceKind::*;
 
@@ -214,6 +256,10 @@ impl Board {
                 White => self.white_king = mv.to,
                 Black => self.black_king = mv.to,
             }
+
+            if (mv.from.1 - mv.to.1).abs() == 2 {
+                // TODO move rook
+            }
         }
 
         self.squares[orow as usize][ocol as usize] = None;
@@ -229,7 +275,7 @@ impl Board {
         }
 
         let mut simulation_board: Board = self.clone();
-        simulation_board.raw_move(mv, true);
+        simulation_board.raw_move(mv);
         let colour = self.get_piece(mv.from.0, mv.from.1).unwrap().colour;
         return !simulation_board.king_in_check(colour);
     }
@@ -303,21 +349,18 @@ impl fmt::Display for Board {
         let mut out = String::new();
 
         for (row, col) in square_iter() {
-            // Print row label at the start of each row
             if col == 0 {
-                out.push_str(&format!("{} ", row));
+                out.push_str(&format!("{} ", 7 - row));
             }
 
-            let piece = self.get_piece(row, col);
+            let piece = self.get_piece(7 - row, col);
             out.push_str(&format!("[{}]", get_lexrep(piece)));
 
-            // End of row → newline
             if col == 7 {
                 out.push('\n');
             }
         }
 
-        // Column labels
         out.push_str("  ");
         for col in 0..8 {
             out.push_str(&format!(" {} ", col));

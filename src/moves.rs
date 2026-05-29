@@ -1,4 +1,7 @@
-use crate::board::Board;
+use crate::{
+    board::Board,
+    moves::Colour::{Black, White},
+};
 
 pub type Coordinate = (i8, i8);
 
@@ -75,7 +78,7 @@ impl Board {
             Queen => self.queen_moves(p, row, col),
             Rook => self.rook_moves(p, row, col),
             Bishop => self.bishop_moves(p, row, col),
-            King => self.king_moves(p, row, col),
+            King => self.king_moves(p, row, col, simulate),
         };
     }
 
@@ -201,7 +204,7 @@ impl Board {
         return self.raw_slide(p, row, col, directions, None);
     }
 
-    fn king_moves(&self, p: Piece, row: i8, col: i8) -> Vec<Move> {
+    fn king_moves(&self, p: Piece, row: i8, col: i8, simulate: bool) -> Vec<Move> {
         let directions = vec![
             (1, 0),
             (1, 1),
@@ -212,6 +215,35 @@ impl Board {
             (0, -1),
             (1, -1),
         ];
-        return self.raw_slide(p, row, col, directions, Some(1));
+        let mut moves = self.raw_slide(p, row, col, directions, Some(1));
+        
+        // castling; TODO castling trhough check
+        if p.has_moved
+            || ![(7, 4), (0, 4)].contains(&(row, col))
+            || simulate
+        {
+            return moves;
+        }
+
+        let (rook1, rook2, back_rank) = match p.colour {
+            Colour::White => (self.get_piece(7, 0), self.get_piece(7, 7), 7),
+            Colour::Black => (self.get_piece(0, 0), self.get_piece(0, 7), 0),
+        };
+
+        if rook1.is_some_and(|pr| !pr.has_moved) {
+            if let (None, None, None) = (
+                self.get_piece(back_rank, 1),
+                self.get_piece(back_rank, 2),
+                self.get_piece(back_rank, 3),
+            ) {
+                moves.push(Move::new((back_rank, 4), (back_rank, 2)));
+            }
+        }
+        if rook2.is_some_and(|pr| !pr.has_moved) {
+            if let (None, None) = (self.get_piece(back_rank, 5), self.get_piece(back_rank, 6)) {
+                moves.push(Move::new((back_rank, 4), (back_rank, 6)));
+            }
+        }
+        moves
     }
 }

@@ -1,6 +1,6 @@
 #![allow(clippy::needless_return)]
 
-use crate::input::InputState;
+use crate::{input::InputState, moves::Move};
 use board::Board;
 use std::{
     sync::{
@@ -17,7 +17,7 @@ mod moves;
 mod window;
 
 fn main() {
-    let board: Arc<Mutex<Board>> = Arc::new(Mutex::new(Board::checkmate_test()));
+    let board: Arc<Mutex<Board>> = Arc::new(Mutex::new(Board::new()));
     let ready_flag: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
     let input: Arc<Mutex<InputState>> = Arc::new(Mutex::new(InputState::new()));
 
@@ -49,16 +49,20 @@ fn logic(board: Arc<Mutex<Board>>, input: Arc<Mutex<InputState>>) {
     loop {
         let mv = input.lock().unwrap().take_pending();
 
+        make_move(mv, board.clone());
+
+        thread::sleep(Duration::from_millis(16));
+    }
+}
+
+pub fn make_move(mv: Option<Move>, board: Arc<Mutex<Board>>) {
         if let Some(mv) = mv {
             with_board(&board, |b| {
                 if b.check_move(mv) {
-                    b.raw_move(mv, false);
+                    b.raw_move(mv);
                     b.switch_turn();
                     b.gamestate = b.get_gamestate(b.to_move);
                 }
             })
         }
-
-        thread::sleep(Duration::from_millis(16));
-    }
 }

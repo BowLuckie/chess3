@@ -176,21 +176,9 @@ fn draw_gamestate_window(d: &mut RaylibDrawHandle, gamestate: GameState) {
     let box_w = 6 * TILE_SIZE;
     let box_h = 3 * TILE_SIZE;
 
-    d.draw_rectangle(
-        box_x + 8,
-        box_y + 8,
-        box_w,
-        box_h,
-        Color::new(0, 0, 0, 90),
-    );
+    d.draw_rectangle(box_x + 8, box_y + 8, box_w, box_h, Color::new(0, 0, 0, 90));
 
-    d.draw_rectangle(
-        box_x,
-        box_y,
-        box_w,
-        box_h,
-        Color::new(245, 245, 245, 255),
-    );
+    d.draw_rectangle(box_x, box_y, box_w, box_h, Color::new(245, 245, 245, 255));
 
     d.draw_rectangle_lines_ex(
         Rectangle::new(box_x as f32, box_y as f32, box_w as f32, box_h as f32),
