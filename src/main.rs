@@ -31,7 +31,7 @@ mod moves;
 mod window;
 
 fn main() {
-    let board: Arc<Mutex<Board>> = Arc::new(Mutex::new(Board::test_board()));
+    let board: Arc<Mutex<Board>> = Arc::new(Mutex::new(Board::new()));
     let ready_flag: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
     let input: Arc<Mutex<InputState>> = Arc::new(Mutex::new(InputState::new()));
 

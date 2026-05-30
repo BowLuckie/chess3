@@ -66,7 +66,7 @@ impl Iterator for SquareIter<'_> {
 }
 
 pub fn reset(board: &Arc<Mutex<Board>>, input: &Arc<Mutex<InputState>>) {
-    *board.lock().unwrap() = Board::test_board();
+    *board.lock().unwrap() = Board::new();
     *input.lock().unwrap() = InputState::new();
 }
 
@@ -158,7 +158,7 @@ impl Board {
             white_king: (7, 4),
             gamestate: GameState::Playing,
             halfmove_clock: 0,
-            promotion_state: PromotionState::Promoting(Move::new((1, 6), (0, 6)), Black),
+            promotion_state: PromotionState::Not,
         }
     }
 
