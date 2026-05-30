@@ -152,6 +152,10 @@ impl Board {
             {
                 moves.push(Move::new(origin, (new_row, new_col)));
             }
+
+            if self.last_double == Some((row, new_col)) {
+                moves.push(Move::new(origin, (new_row, new_col)));
+            }
         }
 
         moves

@@ -16,8 +16,7 @@ use crate::{
     },
     input::{InputState, LoadedSound},
     moves::{
-        Move, Piece,
-        PieceKind::{self, Pawn},
+        Colour, Move, Piece, PieceKind::{self, Pawn}
     },
 };
 use board::Board;
@@ -97,8 +96,9 @@ pub fn make_move(mv: Move, b: &mut Board) {
     }
 
     let target = b.get_piece(mv.to.0, mv.to.1).is_some();
-    let mut castle = false;
     b.raw_move(mv);
+
+    let mut castle = false;
     let piece = b.get_piece(mv.to.0, mv.to.1).copied();
 
     if (mv.to.1 - mv.from.1).abs() > 1 && piece.is_some_and(|p| p.kind == PieceKind::King) {
@@ -129,6 +129,23 @@ pub fn make_move(mv: Move, b: &mut Board) {
     } else {
         LoadedSound::Normal
     };
+
+    b.last_double = if piece.is_some_and(|p| p.kind == Pawn) && (mv.to.0 - mv.from.0).abs() == 2 {
+        Some(mv.to)
+    } else {
+        None
+    };
+
+    let Some(p) = piece else { return; };
+    let dir = match p.colour {
+        Colour::White => -1,
+        Colour::Black => 1,
+    };
+    
+    if piece.is_some_and(|p| p.kind == Pawn) && b.get_piece(mv.to.0 - dir, mv.to.1).is_some_and(|p| p.kind == Pawn) {
+        b.squares[(mv.to.0 - dir) as usize][mv.to.1 as usize] = None;
+        b.loaded_sound = LoadedSound::Capture;
+    }
 
     post_move(b);
 }

@@ -27,6 +27,7 @@ pub struct Board {
     pub promotion_state: PromotionState,
     pub position_history: HashMap<PositionHash, u8>,
     pub loaded_sound: LoadedSound,
+    pub last_double: Option<Coordinate>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -168,6 +169,7 @@ impl Board {
             promotion_state: PromotionState::Not,
             position_history: HashMap::new(),
             loaded_sound: LoadedSound::None,
+            last_double: None,
         }
     }
 
@@ -189,10 +191,10 @@ impl Board {
             });
         };
 
-        place(&mut squares, 0, 5, King, Black); // e8
-        place(&mut squares, 7, 4, King, White); // e1
+        place(&mut squares, 0, 5, King, Black);
+        place(&mut squares, 7, 4, King, White);
 
-        place(&mut squares, 1, 3, Pawn, White); // d7
+        place(&mut squares, 1, 3, Pawn, White);
         place(&mut squares, 1, 2, Rook, White);
 
         Self {
@@ -205,6 +207,7 @@ impl Board {
             promotion_state: PromotionState::Not,
             position_history: HashMap::new(),
             loaded_sound: LoadedSound::None,
+            last_double: None,
         }
     }
 
