@@ -2,7 +2,8 @@ use crate::{
     input::InputState,
     moves::{
         Colour::{self},
-        Coordinate, Move, Piece, PieceKind,
+        Coordinate, Move, Piece,
+        PieceKind::{self, Bishop, Knight},
     },
 };
 use std::{
@@ -19,6 +20,8 @@ pub struct Board {
     pub white_king: Coordinate,
     pub black_king: Coordinate,
     pub gamestate: GameState,
+    pub halfmove_clock: u8,
+    pub promotion_state: PromotionState,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -31,12 +34,18 @@ pub enum GameState {
     FiftyMove,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PromotionState {
+    Not,
+    Promoting(Coordinate, Colour),
+}
+
 pub struct SquareIter<'a> {
     board: &'a Board,
     idx: usize,
 }
 
-impl<'a> Iterator for SquareIter<'a> {
+impl Iterator for SquareIter<'_> {
     type Item = (Option<Piece>, i8, i8);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -51,7 +60,7 @@ impl<'a> Iterator for SquareIter<'a> {
 
         self.idx += 1;
 
-        Some((*piece, row, col))
+        Some((piece.copied(), row, col))
     }
 }
 
@@ -69,7 +78,7 @@ pub fn square_iter() -> impl Iterator<Item = (i8, i8)> {
 }
 
 impl PieceKind {
-    fn base_char(&self) -> char {
+    fn base_char(self) -> char {
         use PieceKind::*;
         match self {
             Pawn => 'P',
@@ -82,7 +91,7 @@ impl PieceKind {
     }
 }
 
-pub fn get_lexrep(piece: &Option<Piece>) -> String {
+pub fn get_lexrep(piece: Option<&Piece>) -> String {
     match piece {
         Some(p) => {
             let c = p.kind.base_char();
@@ -147,6 +156,8 @@ impl Board {
             black_king: (0, 4),
             white_king: (7, 4),
             gamestate: GameState::Playing,
+            halfmove_clock: 0,
+            promotion_state: PromotionState::Not,
         }
     }
 
@@ -181,6 +192,8 @@ impl Board {
             black_king: (0, 0),
             white_king: (7, 4),
             gamestate: GameState::Playing,
+            halfmove_clock: 0,
+            promotion_state: PromotionState::Not,
         }
     }
 
@@ -217,6 +230,8 @@ impl Board {
             black_king: (0, 4),
             white_king: (7, 4),
             gamestate: GameState::Playing,
+            halfmove_clock: 0,
+            promotion_state: PromotionState::Not,
         }
     }
 
@@ -227,15 +242,13 @@ impl Board {
         }
     }
 
-    pub fn get_piece(&self, row: i8, col: i8) -> &Option<Piece> {
-        assert!(row < 8 && col < 8, "row or col exceeds 7: {} {}", row, col);
-        &self.squares[row as usize][col as usize]
+    pub fn get_piece(&self, row: i8, col: i8) -> Option<&Piece> {
+        assert!(row < 8 && col < 8, "row or col exceeds 7: {row} {col}");
+        self.squares[row as usize][col as usize].as_ref()
     }
 
-    pub fn get_piece_by_cord(&self, coordinate: Coordinate) -> &Option<Piece> {
-        let row = coordinate.0;
-        let col = coordinate.1;
-        self.get_piece(row, col)
+    pub fn get_piece_by_cord(&self, coordinate: Coordinate) -> Option<&Piece> {
+        self.get_piece(coordinate.0, coordinate.1)
     }
 
     pub fn raw_move(&mut self, mv: Move) {
@@ -247,7 +260,8 @@ impl Board {
 
         let mut piece = self
             .get_piece(orow, ocol)
-            .expect(&format!("no piece to move at {} {}", orow, ocol));
+            .copied()
+            .unwrap_or_else(|| panic!("no piece to move at {orow} {ocol}"));
 
         piece.has_moved = true;
 
@@ -321,10 +335,48 @@ impl Board {
         if total_moves == 0 {
             if self.king_in_check(colour) {
                 return Checkmate(!colour);
-            } else {
-                return Stalemate;
             }
+            return Stalemate;
         }
+
+        if self.halfmove_clock >= 100 {
+            return FiftyMove;
+        }
+
+        let mut white_pieces: Vec<(Piece, i8, i8)> = Vec::new();
+        let mut black_pieces: Vec<(Piece, i8, i8)> = Vec::new();
+
+        self.as_iter().for_each(|(piece, row, col)| {
+            if piece.is_some_and(|p| p.kind != PieceKind::King) {
+                match piece.unwrap().colour {
+                    Colour::White => white_pieces.push((piece.unwrap(), row, col)),
+                    Colour::Black => black_pieces.push((piece.unwrap(), row, col)),
+                }
+            }
+        });
+
+        let (wlen, blen) = (white_pieces.len(), black_pieces.len());
+
+        if (wlen + blen) == 0 {
+            return InsufficientMat;
+        }
+
+        if match (&white_pieces[..], &black_pieces[..]) {
+            ([p], []) | ([], [p]) => matches!(p.0.kind, Bishop | Knight),
+            _ => false,
+        } {
+            return InsufficientMat;
+        }
+
+        if (wlen == 1 && blen == 1)
+            && white_pieces[0].0.kind == Bishop
+            && black_pieces[0].0.kind == Bishop
+            && (white_pieces[0].1 + white_pieces[0].2) % 2
+                == (black_pieces[0].1 + black_pieces[0].2) % 2
+        {
+            return InsufficientMat;
+        }
+
         Playing
     }
 }
@@ -340,6 +392,7 @@ impl Not for Colour {
     }
 }
 
+#[allow(clippy::format_push_string)]
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = String::new();
@@ -359,10 +412,10 @@ impl fmt::Display for Board {
 
         out.push_str("  ");
         for col in 0..8 {
-            out.push_str(&format!(" {} ", col));
+            out.push_str(&format!(" {col} "));
         }
         out.push('\n');
 
-        write!(f, "{}", out)
+        write!(f, "{out}")
     }
 }

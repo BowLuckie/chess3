@@ -36,34 +36,41 @@ impl InputState {
 pub fn handle_click(board: &Arc<Mutex<Board>>, input: &Arc<Mutex<InputState>>, rl: &RaylibHandle) {
     let col = (rl.get_mouse_x() / TILE_SIZE) as i8;
     let row = (rl.get_mouse_y() / TILE_SIZE) as i8;
+    let new = (row, col);
+
+    let (selected_old, _legal_moves, _pending) = {
+        let input_state = input.lock().unwrap();
+        (
+            input_state.selected,
+            input_state.legal_moves.clone(),
+            None::<Move>,
+        )
+    };
+
+    let (legal_moves, pending) = {
+        let board_guard = board.lock().unwrap();
+        match selected_old {
+            Some(old) if old == new => (vec![], None),
+            Some(old) => {
+                let moves = board_guard.get_moves(row, col);
+                (moves, Some(Move::new(old, new)))
+            }
+            None => (board_guard.get_moves(row, col), None),
+        }
+    };
 
     let mut input_state = input.lock().unwrap();
-    let new = (row, col);
-    let selected_old = input_state.selected;
-    let board_guard = board.lock().unwrap();
     match selected_old {
-        Some(old) => {
-            if old == new {
-                input_state.selected = None;
-                input_state.legal_moves.clear();
-            } else {
-                let old_piece = board_guard.get_piece_by_cord(old);
-                match old_piece {
-                    Some(_) => {
-                        input_state.selected = Some(new);
-                        input_state.legal_moves = board_guard.get_moves(row, col);
-                        input_state.push_pending(Some(Move::new(old, new)));
-                    }
-                    None => {
-                        input_state.selected = Some(new);
-                        input_state.legal_moves = board_guard.get_moves(row, col)
-                    }
-                }
-            }
+        Some(old) if old == new => {
+            input_state.selected = None;
+            input_state.legal_moves.clear();
         }
-        None => {
+        _ => {
             input_state.selected = Some(new);
-            input_state.legal_moves = board_guard.get_moves(row, col)
+            input_state.legal_moves = legal_moves;
+            if let Some(mv) = pending {
+                input_state.push_pending(Some(mv));
+            }
         }
     }
 }

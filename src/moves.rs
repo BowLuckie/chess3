@@ -1,7 +1,4 @@
-use crate::{
-    board::Board,
-    moves::Colour::{Black, White},
-};
+use crate::board::Board;
 
 pub type Coordinate = (i8, i8);
 
@@ -45,9 +42,10 @@ fn in_bounds_point(point: Coordinate) -> bool {
 
 impl Move {
     pub fn new(from: Coordinate, to: Coordinate) -> Self {
-        if !(in_bounds_point(from) && in_bounds_point(to)) {
-            panic!("attempted to create a move out of bounds!")
-        }
+        assert!(
+            in_bounds_point(from) && in_bounds_point(to),
+            "attempted to create a move out of bounds!"
+        );
         Move { from, to }
     }
 }
@@ -61,8 +59,8 @@ impl Board {
     }
 
     pub fn get_moves_unchecked(&self, row: i8, col: i8, simulate: bool) -> Vec<Move> {
-        match *self.get_piece(row, col) {
-            Some(p) => self.dispatch(p, row, col, simulate),
+        match self.get_piece(row, col) {
+            Some(p) => self.dispatch(*p, row, col, simulate),
             None => vec![],
         }
     }
@@ -103,12 +101,11 @@ impl Board {
 
         for dc in [-1, 1] {
             let new_col = col + dc;
-            if in_bounds(new_row, new_col) {
-                if let Some(target) = self.get_piece(new_row, new_col) {
-                    if target.colour != p.colour {
-                        moves.push(Move::new(origin, (new_row, new_col)));
-                    }
-                }
+            if in_bounds(new_row, new_col)
+                && let Some(target) = self.get_piece(new_row, new_col)
+                && target.colour != p.colour
+            {
+                moves.push(Move::new(origin, (new_row, new_col)));
             }
         }
 
@@ -162,14 +159,14 @@ impl Board {
             while in_bounds(trow, tcol) && distance < max.unwrap_or(8) {
                 let target = self.get_piece(trow, tcol);
 
-                if target.is_none() {
+                if let Some(t) = target {
+                    if t.colour == p.colour {
+                        break;
+                    }
                     moves.push(Move::new(origin, (trow, tcol)));
-                } else if target.unwrap().colour != p.colour {
-                    moves.push(Move::new(origin, (trow, tcol)));
-                    break;
-                } else {
                     break;
                 }
+                moves.push(Move::new(origin, (trow, tcol)));
 
                 trow += drow;
                 tcol += dcol;
@@ -220,7 +217,6 @@ impl Board {
 
         let mut moves = self.raw_slide(p, row, col, directions, Some(1));
 
-        // no castling
         if simulate || p.has_moved || ![(7, 4), (0, 4)].contains(&(row, col)) {
             return moves;
         }
