@@ -102,7 +102,7 @@ pub fn make_move(mv: Move, b: &mut Board) {
 
         b.raw_move(Move::new(rook_from, rook_to));
     } else if target || piece.is_some_and(|p| p.kind == Pawn) {
-        b.halfmove_clock = 0;
+        b.halfmove_clock = -1;
         if let Some(piece) = piece
             && piece.kind == Pawn
             && [0, 7].contains(&mv.to.0)

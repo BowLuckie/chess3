@@ -20,7 +20,7 @@ pub struct Board {
     pub white_king: Coordinate,
     pub black_king: Coordinate,
     pub gamestate: GameState,
-    pub halfmove_clock: u8,
+    pub halfmove_clock: i8,
     pub promotion_state: PromotionState,
     pub position_history: HashMap<PositionHash, u8>
 }
