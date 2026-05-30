@@ -1,15 +1,19 @@
 #![allow(clippy::identity_op)]
-#![allow(clippy::needless_return)]
-#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::needless_return)] // i always like to use return where possible
+#![allow(clippy::cast_possible_truncation)] // i do lots of casts to index the board
+#![allow(clippy::cast_lossless)]
 #![allow(clippy::cast_precision_loss)]
 #![allow(clippy::cast_sign_loss)]
-#![allow(clippy::wildcard_imports)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::wildcard_imports)] // i use these in big match statements
 #![allow(clippy::enum_glob_use)]
-#![allow(clippy::cast_lossless)]
 
 use crate::{
+    board::PromotionState::{self, Complete},
     input::InputState,
-    moves::{Move, PieceKind},
+    moves::{
+        Move, Piece, PieceKind::{self, Pawn}
+    },
 };
 use board::Board;
 use std::{
@@ -27,7 +31,7 @@ mod moves;
 mod window;
 
 fn main() {
-    let board: Arc<Mutex<Board>> = Arc::new(Mutex::new(Board::new()));
+    let board: Arc<Mutex<Board>> = Arc::new(Mutex::new(Board::test_board()));
     let ready_flag: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
     let input: Arc<Mutex<InputState>> = Arc::new(Mutex::new(InputState::new()));
 
@@ -63,6 +67,17 @@ fn logic(board: &Arc<Mutex<Board>>, input: &Arc<Mutex<InputState>>) {
             });
         }
 
+        with_board(board, |b| {
+            if let Complete(square, kind, colour) = b.promotion_state {
+                let (row, col) = square;
+                b.squares[row as usize][col as usize] = Some(Piece { kind, colour, has_moved: true });
+                b.promotion_state = PromotionState::Not;
+                b.switch_turn();
+                b.halfmove_clock += 1;
+                b.gamestate = b.get_gamestate(b.to_move);
+            }
+        });
+
         thread::sleep(Duration::from_millis(16));
     }
 }
@@ -74,7 +89,7 @@ pub fn make_move(mv: Move, b: &mut Board) {
 
     let target = b.get_piece(mv.to.0, mv.to.1).is_some();
     b.raw_move(mv);
-    let piece = b.get_piece(mv.to.0, mv.to.1);
+    let piece = b.get_piece(mv.to.0, mv.to.1).copied();
 
     if (mv.to.1 - mv.from.1).abs() > 1 && piece.is_some_and(|p| p.kind == PieceKind::King) {
         let rank = mv.to.0;
@@ -85,8 +100,15 @@ pub fn make_move(mv: Move, b: &mut Board) {
         };
 
         b.raw_move(Move::new(rook_from, rook_to));
-    } else if target || piece.is_some_and(|p| p.kind == PieceKind::Pawn) {
+    } else if target || piece.is_some_and(|p| p.kind == Pawn) {
         b.halfmove_clock = 0;
+        if let Some(piece) = piece
+            && piece.kind == Pawn
+            && [0, 7].contains(&mv.to.0)
+        {
+            b.promotion_state = PromotionState::Promoting(mv, piece.colour);
+            return;
+        }
     }
 
     b.switch_turn();

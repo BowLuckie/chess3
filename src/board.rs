@@ -34,10 +34,11 @@ pub enum GameState {
     FiftyMove,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug)]
 pub enum PromotionState {
     Not,
-    Promoting(Coordinate, Colour),
+    Promoting(Move, Colour),
+    Complete(Coordinate, PieceKind, Colour),
 }
 
 pub struct SquareIter<'a> {
@@ -65,7 +66,7 @@ impl Iterator for SquareIter<'_> {
 }
 
 pub fn reset(board: &Arc<Mutex<Board>>, input: &Arc<Mutex<InputState>>) {
-    *board.lock().unwrap() = Board::new();
+    *board.lock().unwrap() = Board::test_board();
     *input.lock().unwrap() = InputState::new();
 }
 
@@ -157,43 +158,7 @@ impl Board {
             white_king: (7, 4),
             gamestate: GameState::Playing,
             halfmove_clock: 0,
-            promotion_state: PromotionState::Not,
-        }
-    }
-
-    #[allow(unused)]
-    pub fn checkmate_test() -> Self {
-        use Colour::*;
-        use PieceKind::*;
-
-        let mut squares: [[Option<Piece>; 8]; 8] = [[None; 8]; 8];
-
-        let place = |squares: &mut [[Option<Piece>; 8]; 8],
-                     row: usize,
-                     col: usize,
-                     kind: PieceKind,
-                     colour: Colour| {
-            squares[row][col] = Some(Piece {
-                kind,
-                colour,
-                has_moved: false,
-            });
-        };
-
-        place(&mut squares, 0, 0, King, Black); // a8
-        place(&mut squares, 1, 0, Pawn, Black); // a7
-        place(&mut squares, 1, 1, Pawn, Black); // b7
-        place(&mut squares, 1, 2, Queen, White); // c3 
-        place(&mut squares, 7, 4, King, White);
-
-        Self {
-            squares,
-            to_move: White,
-            black_king: (0, 0),
-            white_king: (7, 4),
-            gamestate: GameState::Playing,
-            halfmove_clock: 0,
-            promotion_state: PromotionState::Not,
+            promotion_state: PromotionState::Promoting(Move::new((1, 6), (0, 6)), Black),
         }
     }
 
@@ -201,7 +166,7 @@ impl Board {
         use Colour::*;
         use PieceKind::*;
 
-        let mut squares: [[Option<Piece>; 8]; 8] = [[None; 8]; 8];
+        let mut squares = [[None; 8]; 8];
 
         let place = |squares: &mut [[Option<Piece>; 8]; 8],
                      row: usize,
@@ -215,19 +180,16 @@ impl Board {
             });
         };
 
-        place(&mut squares, 0, 1, Queen, Black); // b8
-        place(&mut squares, 1, 0, Pawn, Black); // a7
-        place(&mut squares, 1, 1, Pawn, Black); // b7
-        place(&mut squares, 0, 4, King, Black); // e8 (correct square)
+        place(&mut squares, 0, 5, King, Black); // e8
+        place(&mut squares, 7, 4, King, White); // e1
 
-        place(&mut squares, 7, 0, Rook, White); // a1
-        place(&mut squares, 7, 7, Rook, White); // h1
-        place(&mut squares, 7, 4, King, White); // e1 (correct square)
+        place(&mut squares, 1, 3, Pawn, White); // d7
+        place(&mut squares, 1, 2, Rook, White);
 
         Self {
             squares,
             to_move: White,
-            black_king: (0, 4),
+            black_king: (0, 5),
             white_king: (7, 4),
             gamestate: GameState::Playing,
             halfmove_clock: 0,

@@ -5,9 +5,9 @@ use std::sync::{
 
 use crate::{
     Board,
-    board::{GameState, reset, square_iter},
+    board::{GameState, PromotionState, reset, square_iter},
     input::{self, InputState},
-    moves::{Colour, Coordinate, Piece},
+    moves::{Colour, Coordinate, Piece, promotion_options},
 };
 use raylib::prelude::*;
 
@@ -59,6 +59,7 @@ pub fn chess_window(
         let gamestate = {
             let board: MutexGuard<'_, Board> = board.lock().unwrap();
             draw_pieces(&mut d, &board, &spritesheet, sprite_w, sprite_h);
+            draw_promotion_menu(&mut d, board.promotion_state, &spritesheet, &board);
             board.gamestate
         };
 
@@ -168,14 +169,14 @@ fn draw_gamestate_window(d: &mut RaylibDrawHandle, gamestate: GameState) {
     let (title, subtitle) = match gamestate {
         Checkmate(Colour::White) => ("White wins!", "Black has been checkmated"),
         Checkmate(Colour::Black) => ("Black wins!", "White has been checkmated"),
-        Stalemate => ("Draw", "Stalemate — no legal moves"),
+        Stalemate => ("Draw", "Stalemate, no legal moves"),
         InsufficientMat => ("Draw", "Insufficient material"),
         FiftyMove => ("Draw", "Fifty-move rule"),
         Playing => return,
     };
 
     let box_x = 1 * TILE_SIZE;
-    let box_y = 3 * TILE_SIZE;
+    let box_y = 3 * TILE_SIZE - TILE_SIZE / 2;
     let box_w = 6 * TILE_SIZE;
     let box_h = 3 * TILE_SIZE;
 
@@ -230,4 +231,53 @@ fn draw_gamestate_window(d: &mut RaylibDrawHandle, gamestate: GameState) {
         hint_size,
         Color::new(100, 100, 100, 255),
     );
+}
+
+fn draw_promotion_menu(
+    d: &mut RaylibDrawHandle,
+    promotion_state: PromotionState,
+    spritesheet: &Texture2D,
+    _board: &Board,
+) {
+    let PromotionState::Promoting(mv, colour) = promotion_state else {
+        return;
+    };
+
+    let x = mv.to.1 as i32 * TILE_SIZE;
+
+    let start_row = match colour {
+        Colour::White => 0,
+        Colour::Black => 4,
+    };
+
+    let box_x = x;
+    let box_y = start_row * TILE_SIZE;
+    let box_w = TILE_SIZE;
+    let box_h = TILE_SIZE * 4;
+
+    d.draw_rectangle(box_x + 4, box_y + 4, box_w, box_h, Color::new(0, 0, 0, 90));
+
+    d.draw_rectangle(box_x, box_y, box_w, box_h, Color::new(245, 245, 245, 255));
+
+    d.draw_rectangle_lines_ex(
+        Rectangle::new(box_x as f32, box_y as f32, box_w as f32, box_h as f32),
+        2.0,
+        Color::BLACK,
+    );
+
+    let sprite_w = spritesheet.width as f32 / 6.0;
+    let sprite_h = spritesheet.height as f32 / 2.0;
+
+    for (i, piece) in promotion_options(colour).into_iter().enumerate() {
+        let src = piece_rect(piece, sprite_w, sprite_h);
+
+        let dst = Rectangle {
+            x: box_x as f32,
+            y: (box_y + i as i32 * TILE_SIZE) as f32,
+            width: TILE_SIZE as f32,
+            height: TILE_SIZE as f32,
+        };
+
+        d.draw_texture_pro(spritesheet, src, dst, Vector2::zero(), 0.0, Color::WHITE);
+    }
 }

@@ -1,4 +1,7 @@
-use crate::board::Board;
+use crate::board::{
+    Board,
+    PromotionState::{self, Promoting},
+};
 
 pub type Coordinate = (i8, i8);
 
@@ -40,6 +43,45 @@ fn in_bounds_point(point: Coordinate) -> bool {
     (0..8).contains(&point.0) && (0..8).contains(&point.1)
 }
 
+pub fn promotion_options(colour: Colour) -> [Piece; 4] {
+    let piece = |kind| Piece {
+        kind,
+        colour,
+        has_moved: true,
+    };
+    [
+        piece(PieceKind::Queen),
+        piece(PieceKind::Rook),
+        piece(PieceKind::Bishop),
+        piece(PieceKind::Knight),
+    ]
+}
+
+pub fn promotion_click(click: Coordinate, promotion_state: PromotionState) -> Option<PieceKind> {
+    let PromotionState::Promoting(mv, colour) = promotion_state else {
+        return None;
+    };
+
+    let (row, col) = click;
+
+    if col != mv.to.1 {
+        return None;
+    }
+
+    let start_row = match colour {
+        Colour::White => 0,
+        Colour::Black => 4,
+    };
+
+    let index = row - start_row;
+    if  !(0..4).contains(&index) {
+        return None;
+    }
+
+    let options = promotion_options(colour);
+    Some(options[index as usize].kind)
+}
+
 impl Move {
     pub fn new(from: Coordinate, to: Coordinate) -> Self {
         assert!(
@@ -52,6 +94,9 @@ impl Move {
 
 impl Board {
     pub fn get_moves(&self, row: i8, col: i8) -> Vec<Move> {
+        if let Promoting(_, _) = self.promotion_state {
+            return vec![];
+        }
         self.get_moves_unchecked(row, col, false)
             .into_iter()
             .filter(|mv| self.check_move(*mv))

@@ -3,8 +3,11 @@ use std::sync::{Arc, Mutex};
 use raylib::RaylibHandle;
 
 use crate::{
-    board::Board,
-    moves::{Coordinate, Move},
+    board::{
+        Board,
+        PromotionState::{Complete, Promoting},
+    },
+    moves::{Coordinate, Move, promotion_click},
     window::TILE_SIZE,
 };
 
@@ -38,17 +41,18 @@ pub fn handle_click(board: &Arc<Mutex<Board>>, input: &Arc<Mutex<InputState>>, r
     let row = (rl.get_mouse_y() / TILE_SIZE) as i8;
     let new = (row, col);
 
-    let (selected_old, _legal_moves, _pending) = {
-        let input_state = input.lock().unwrap();
-        (
-            input_state.selected,
-            input_state.legal_moves.clone(),
-            None::<Move>,
-        )
-    };
+    let input_state = input.lock().unwrap();
+    let selected_old = input_state.selected;
+    drop(input_state);
 
     let (legal_moves, pending) = {
-        let board_guard = board.lock().unwrap();
+        let mut board_guard = board.lock().unwrap();
+        if let Promoting(mv, colour) = board_guard.promotion_state
+            && let Some(p) = promotion_click(new, board_guard.promotion_state)
+        {
+            board_guard.promotion_state = Complete(mv.to, p, colour);
+            return
+        }
         match selected_old {
             Some(old) if old == new => (vec![], None),
             Some(old) => {
