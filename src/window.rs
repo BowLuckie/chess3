@@ -6,13 +6,27 @@ use std::sync::{
 use crate::{
     Board,
     board::{GameState, PromotionState, reset, square_iter},
-    input::{self, InputState},
+    input::{self, InputState, LoadedSound},
     moves::{Colour, Coordinate, Piece, promotion_options},
 };
 use raylib::prelude::*;
 
 pub const TILE_SIZE: i32 = 80;
 
+macro_rules! load_sound {
+    ($audio:expr, $path:literal) => {
+        $audio
+            .new_sound_from_wave(
+                &$audio
+                    .new_wave_from_memory(
+                        ".mp3",
+                        include_bytes!(concat!("../assets/", $path, ".mp3")),
+                    )
+                    .unwrap(),
+            )
+            .unwrap()
+    };
+}
 pub fn chess_window(
     board: &Arc<Mutex<Board>>,
     ready: &Arc<AtomicBool>,
@@ -22,6 +36,16 @@ pub fn chess_window(
         .size(TILE_SIZE * 8, TILE_SIZE * 8)
         .title("chess3")
         .build();
+
+    let audio = RaylibAudio::init_audio_device().unwrap();
+
+    let move_sound = load_sound!(audio, "move-self");
+    let capture_sound = load_sound!(audio, "capture");
+    let start_sound = load_sound!(audio, "game-start");
+    let end_sound = load_sound!(audio, "game-end");
+    let check_sound = load_sound!(audio, "move-check");
+    let promote_sound = load_sound!(audio, "promote");
+    let castle_sound = load_sound!(audio, "castle");
 
     let spritesheet = load_texture(
         &mut rl,
@@ -57,9 +81,20 @@ pub fn chess_window(
         draw_board(&mut d, &highlighted);
 
         let gamestate = {
-            let board: MutexGuard<'_, Board> = board.lock().unwrap();
+            let mut board: MutexGuard<'_, Board> = board.lock().unwrap();
             draw_pieces(&mut d, &board, &spritesheet, sprite_w, sprite_h);
             draw_promotion_menu(&mut d, board.promotion_state, &spritesheet, &board);
+            match board.loaded_sound {
+                LoadedSound::Normal => move_sound.play(),
+                LoadedSound::Capture => capture_sound.play(),
+                LoadedSound::Start => start_sound.play(),
+                LoadedSound::End => end_sound.play(),
+                LoadedSound::Check => check_sound.play(),
+                LoadedSound::Promote => promote_sound.play(),
+                LoadedSound::Castle => castle_sound.play(),
+                LoadedSound::None => {}
+            }
+            board.loaded_sound = LoadedSound::None;
             board.gamestate
         };
 

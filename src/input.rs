@@ -18,6 +18,18 @@ pub struct InputState {
     pub legal_moves: Vec<Move>,
 }
 
+#[derive(Debug, Clone)]
+pub enum LoadedSound {
+    None,
+    Normal,
+    Capture,
+    Start,
+    End,
+    Check,
+    Promote,
+    Castle,
+}
+
 impl InputState {
     pub fn new() -> Self {
         Self {
@@ -51,7 +63,7 @@ pub fn handle_click(board: &Arc<Mutex<Board>>, input: &Arc<Mutex<InputState>>, r
             && let Some(p) = promotion_click(new, board_guard.promotion_state)
         {
             board_guard.promotion_state = Complete(mv.to, p, colour);
-            return
+            return;
         }
         match selected_old {
             Some(old) if old == new => (vec![], None),

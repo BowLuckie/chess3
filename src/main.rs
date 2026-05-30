@@ -1,21 +1,23 @@
 #![allow(clippy::identity_op)] // i find using c * C is more idiomatic even if c is 1
-
 #![allow(clippy::needless_return)] // i always like to use return where possible
-
 #![allow(clippy::cast_possible_truncation)] // the program does lots of casts to index the board
 #![allow(clippy::cast_lossless)]
 #![allow(clippy::cast_precision_loss)]
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_possible_wrap)]
-
 #![allow(clippy::wildcard_imports)] // i use these in big match statements
 #![allow(clippy::enum_glob_use)]
 
 use crate::{
-    board::PromotionState::{self, Complete},
-    input::InputState,
+    board::{
+        GameState,
+        PromotionState::{self, Complete},
+        reset,
+    },
+    input::{InputState, LoadedSound},
     moves::{
-        Move, Piece, PieceKind::{self, Pawn}
+        Move, Piece,
+        PieceKind::{self, Pawn},
     },
 };
 use board::Board;
@@ -37,6 +39,8 @@ fn main() {
     let board: Arc<Mutex<Board>> = Arc::new(Mutex::new(Board::new()));
     let ready_flag: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
     let input: Arc<Mutex<InputState>> = Arc::new(Mutex::new(InputState::new()));
+
+    reset(&board, &input);
 
     let logic_input: Arc<Mutex<InputState>> = Arc::clone(&input);
 
@@ -73,7 +77,11 @@ fn logic(board: &Arc<Mutex<Board>>, input: &Arc<Mutex<InputState>>) {
         with_board(board, |b| {
             if let Complete(square, kind, colour) = b.promotion_state {
                 let (row, col) = square;
-                b.squares[row as usize][col as usize] = Some(Piece { kind, colour, has_moved: true });
+                b.squares[row as usize][col as usize] = Some(Piece {
+                    kind,
+                    colour,
+                    has_moved: true,
+                });
                 b.promotion_state = PromotionState::Not;
                 post_move(b);
             }
@@ -89,10 +97,12 @@ pub fn make_move(mv: Move, b: &mut Board) {
     }
 
     let target = b.get_piece(mv.to.0, mv.to.1).is_some();
+    let mut castle = false;
     b.raw_move(mv);
     let piece = b.get_piece(mv.to.0, mv.to.1).copied();
 
     if (mv.to.1 - mv.from.1).abs() > 1 && piece.is_some_and(|p| p.kind == PieceKind::King) {
+        castle = true;
         let rank = mv.to.0;
         let (rook_from, rook_to) = if mv.to.1 == 6 {
             ((rank, 7), (rank, 5))
@@ -108,9 +118,18 @@ pub fn make_move(mv: Move, b: &mut Board) {
             && [0, 7].contains(&mv.to.0)
         {
             b.promotion_state = PromotionState::Promoting(mv, piece.colour);
+            b.loaded_sound = LoadedSound::Promote;
             return;
         }
     }
+    b.loaded_sound = if castle {
+        LoadedSound::Castle
+    } else if target {
+        LoadedSound::Capture
+    } else {
+        LoadedSound::Normal
+    };
+
     post_move(b);
 }
 
@@ -120,5 +139,10 @@ fn post_move(b: &mut Board) {
     let hash = b.position_hash();
     *b.position_history.entry(hash).or_insert(0) += 1;
     b.gamestate = b.get_gamestate(b.to_move);
+    if !matches!(b.gamestate, GameState::Playing) {
+        b.loaded_sound = LoadedSound::End;
+    } else if b.king_in_check(b.to_move) {
+        b.loaded_sound = LoadedSound::Check;
+    }
     println!("hash: {} count: {}", hash, b.position_history[&hash]);
 }

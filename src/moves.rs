@@ -74,7 +74,7 @@ pub fn promotion_click(click: Coordinate, promotion_state: PromotionState) -> Op
     };
 
     let index = row - start_row;
-    if  !(0..4).contains(&index) {
+    if !(0..4).contains(&index) {
         return None;
     }
 

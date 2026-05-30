@@ -1,5 +1,5 @@
 use crate::{
-    input::InputState,
+    input::{InputState, LoadedSound},
     moves::{
         Colour::{self},
         Coordinate, Move, Piece,
@@ -7,7 +7,10 @@ use crate::{
     },
 };
 use std::{
-    collections::HashMap, fmt, ops::Not, sync::{Arc, Mutex}
+    collections::HashMap,
+    fmt,
+    ops::Not,
+    sync::{Arc, Mutex},
 };
 
 pub type PositionHash = u64;
@@ -22,7 +25,8 @@ pub struct Board {
     pub gamestate: GameState,
     pub halfmove_clock: i8,
     pub promotion_state: PromotionState,
-    pub position_history: HashMap<PositionHash, u8>
+    pub position_history: HashMap<PositionHash, u8>,
+    pub loaded_sound: LoadedSound,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -33,7 +37,7 @@ pub enum GameState {
     Stalemate,
     InsufficientMat,
     FiftyMove,
-    Repetition
+    Repetition,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -69,6 +73,7 @@ impl Iterator for SquareIter<'_> {
 
 pub fn reset(board: &Arc<Mutex<Board>>, input: &Arc<Mutex<InputState>>) {
     *board.lock().unwrap() = Board::new();
+    board.lock().unwrap().loaded_sound = LoadedSound::Start;
     *input.lock().unwrap() = InputState::new();
 }
 
@@ -162,6 +167,7 @@ impl Board {
             halfmove_clock: 0,
             promotion_state: PromotionState::Not,
             position_history: HashMap::new(),
+            loaded_sound: LoadedSound::None,
         }
     }
 
@@ -198,6 +204,7 @@ impl Board {
             halfmove_clock: 0,
             promotion_state: PromotionState::Not,
             position_history: HashMap::new(),
+            loaded_sound: LoadedSound::None,
         }
     }
 
@@ -350,8 +357,8 @@ impl Board {
     }
 
     pub fn position_hash(&self) -> PositionHash {
-        use std::hash::{Hash, Hasher};
         use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
         let mut hasher = DefaultHasher::new();
         self.squares.hash(&mut hasher);
         self.to_move.hash(&mut hasher);
