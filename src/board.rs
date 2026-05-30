@@ -7,10 +7,10 @@ use crate::{
     },
 };
 use std::{
-    fmt,
-    ops::Not,
-    sync::{Arc, Mutex},
+    collections::HashMap, fmt, ops::Not, sync::{Arc, Mutex}
 };
+
+pub type PositionHash = u64;
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -22,6 +22,7 @@ pub struct Board {
     pub gamestate: GameState,
     pub halfmove_clock: u8,
     pub promotion_state: PromotionState,
+    pub position_history: HashMap<PositionHash, u8>
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -32,6 +33,7 @@ pub enum GameState {
     Stalemate,
     InsufficientMat,
     FiftyMove,
+    Repetition
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -159,6 +161,7 @@ impl Board {
             gamestate: GameState::Playing,
             halfmove_clock: 0,
             promotion_state: PromotionState::Not,
+            position_history: HashMap::new(),
         }
     }
 
@@ -194,6 +197,7 @@ impl Board {
             gamestate: GameState::Playing,
             halfmove_clock: 0,
             promotion_state: PromotionState::Not,
+            position_history: HashMap::new(),
         }
     }
 
@@ -283,6 +287,9 @@ impl Board {
 
     pub fn get_gamestate(&self, colour: Colour) -> GameState {
         use GameState::*;
+        if self.position_history.values().any(|&c| c > 2) {
+            return Repetition;
+        }
         let total_moves: usize = self
             .as_iter()
             .filter_map(|(piece, row, col)| {
@@ -340,6 +347,15 @@ impl Board {
         }
 
         Playing
+    }
+
+    pub fn position_hash(&self) -> PositionHash {
+        use std::hash::{Hash, Hasher};
+        use std::collections::hash_map::DefaultHasher;
+        let mut hasher = DefaultHasher::new();
+        self.squares.hash(&mut hasher);
+        self.to_move.hash(&mut hasher);
+        return hasher.finish();
     }
 }
 

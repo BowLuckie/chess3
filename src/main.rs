@@ -1,10 +1,13 @@
-#![allow(clippy::identity_op)]
+#![allow(clippy::identity_op)] // i find using c * C is more idiomatic even if c is 1
+
 #![allow(clippy::needless_return)] // i always like to use return where possible
-#![allow(clippy::cast_possible_truncation)] // i do lots of casts to index the board
+
+#![allow(clippy::cast_possible_truncation)] // the program does lots of casts to index the board
 #![allow(clippy::cast_lossless)]
 #![allow(clippy::cast_precision_loss)]
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::cast_possible_wrap)]
+
 #![allow(clippy::wildcard_imports)] // i use these in big match statements
 #![allow(clippy::enum_glob_use)]
 
@@ -42,7 +45,7 @@ fn main() {
 
     thread::spawn(move || {
         while !window_pointer.load(Ordering::SeqCst) {
-            thread::sleep(Duration::from_millis(10));
+            thread::sleep(Duration::from_millis(16));
         }
 
         logic(&logic_board, &logic_input);
@@ -72,9 +75,7 @@ fn logic(board: &Arc<Mutex<Board>>, input: &Arc<Mutex<InputState>>) {
                 let (row, col) = square;
                 b.squares[row as usize][col as usize] = Some(Piece { kind, colour, has_moved: true });
                 b.promotion_state = PromotionState::Not;
-                b.switch_turn();
-                b.halfmove_clock += 1;
-                b.gamestate = b.get_gamestate(b.to_move);
+                post_move(b);
             }
         });
 
@@ -110,8 +111,14 @@ pub fn make_move(mv: Move, b: &mut Board) {
             return;
         }
     }
+    post_move(b);
+}
 
+fn post_move(b: &mut Board) {
     b.switch_turn();
     b.halfmove_clock += 1;
+    let hash = b.position_hash();
+    *b.position_history.entry(hash).or_insert(0) += 1;
     b.gamestate = b.get_gamestate(b.to_move);
+    println!("hash: {} count: {}", hash, b.position_history[&hash]);
 }

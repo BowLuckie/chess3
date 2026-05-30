@@ -172,6 +172,7 @@ fn draw_gamestate_window(d: &mut RaylibDrawHandle, gamestate: GameState) {
         Stalemate => ("Draw", "Stalemate, no legal moves"),
         InsufficientMat => ("Draw", "Insufficient material"),
         FiftyMove => ("Draw", "Fifty-move rule"),
+        Repetition => ("Draw", "Repetition"),
         Playing => return,
     };
 

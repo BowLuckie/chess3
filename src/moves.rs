@@ -5,13 +5,13 @@ use crate::board::{
 
 pub type Coordinate = (i8, i8);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Colour {
     White,
     Black,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PieceKind {
     Pawn,
     Knight,
@@ -21,7 +21,7 @@ pub enum PieceKind {
     King,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash)]
 pub struct Piece {
     pub kind: PieceKind,
     pub colour: Colour,
